@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ======= SHADOW (bottom corner depth) ======= -->
+    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="85.84757"
+                android:endY="92.4963"
+                android:startX="42.9492"
+                android:startY="49.59793"
+                android:type="linear">
+                <item android:color="#66000000" android:offset="0.0" />
+                <item android:color="#00000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- ======= HORNS (teal, sharp triangles) ======= -->
+    <!-- Left horn -->
+    <path
+        android:pathData="M35,28 L26,6 L47,9 Z"
+        android:fillColor="#00BCD4"
+        android:strokeColor="#4DD0E1"
+        android:strokeWidth="0.6"/>
+    <!-- Left horn inner bevel -->
+    <path
+        android:pathData="M36,26 L30,10 L44,12 Z"
+        android:fillColor="#0D3040"/>
+
+    <!-- Right horn -->
+    <path
+        android:pathData="M73,28 L61,9 L82,6 Z"
+        android:fillColor="#00BCD4"
+        android:strokeColor="#4DD0E1"
+        android:strokeWidth="0.6"/>
+    <!-- Right horn inner bevel -->
+    <path
+        android:pathData="M72,26 L64,12 L78,10 Z"
+        android:fillColor="#0D3040"/>
+
+    <!-- Center danger spike (RED) -->
+    <path
+        android:pathData="M51,27 L54,15 L57,27 Z"
+        android:fillColor="#FF1744"
+        android:strokeColor="#FF6E6E"
+        android:strokeWidth="0.4"/>
+
+    <!-- ======= HEAD: angular war-helmet hexagon ======= -->
+    <path
+        android:pathData="M33,27 L75,27 L84,39 L80,51 L28,51 L24,39 Z"
+        android:fillColor="#0A1520"
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1.8"/>
+
+    <!-- Head armor: forehead ridge -->
+    <path
+        android:pathData="M44,27 L54,30 L64,27"
+        android:strokeWidth="0.9"
+        android:strokeColor="#00838F"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"/>
+
+    <!-- Head armor: top-corner etching left -->
+    <path
+        android:pathData="M33,29 L44,27"
+        android:strokeWidth="0.7"
+        android:strokeColor="#1E4D5C"
+        android:fillColor="#00000000"/>
+    <!-- Head armor: top-corner etching right -->
+    <path
+        android:pathData="M75,29 L64,27"
+        android:strokeWidth="0.7"
+        android:strokeColor="#1E4D5C"
+        android:fillColor="#00000000"/>
+
+    <!-- Head armor: cheek plates left -->
+    <path
+        android:pathData="M24,41 L33,36"
+        android:strokeWidth="0.7"
+        android:strokeColor="#00838F"
+        android:fillColor="#00000000"/>
+    <!-- Head armor: cheek plates right -->
+    <path
+        android:pathData="M84,41 L75,36"
+        android:strokeWidth="0.7"
+        android:strokeColor="#00838F"
+        android:fillColor="#00000000"/>
+
+    <!-- ======= VISOR: red glowing slit ======= -->
+    <!-- Outer halo -->
+    <path
+        android:pathData="M26,39 L82,39"
+        android:strokeWidth="8"
+        android:strokeColor="#18FF1744"
+        android:fillColor="#00000000"/>
+    <!-- Mid glow -->
+    <path
+        android:pathData="M26,39 L82,39"
+        android:strokeWidth="4"
+        android:strokeColor="#44FF1744"
+        android:fillColor="#00000000"/>
+    <!-- Visor body -->
+    <path
+        android:pathData="M26,39 L82,39"
+        android:strokeWidth="2.0"
+        android:strokeColor="#DD1144"
+        android:fillColor="#00000000"
+        android:strokeLineCap="butt"/>
+    <!-- Visor hot core -->
+    <path
+        android:pathData="M28,39 L80,39"
+        android:strokeWidth="0.7"
+        android:strokeColor="#FF8A9B"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"/>
+    <!-- Secondary scan line -->
+    <path
+        android:pathData="M30,43 L78,43"
+        android:strokeWidth="0.5"
+        android:strokeColor="#33FF1744"
+        android:fillColor="#00000000"/>
+
+    <!-- ======= JAW / LOWER FACE ======= -->
+    <!-- Chin armor plate -->
+    <path
+        android:pathData="M30,47 L36,51 L72,51 L78,47"
+        android:strokeWidth="0.9"
+        android:strokeColor="#00838F"
+        android:fillColor="#00000000"/>
+    <!-- Chin center notch -->
+    <path
+        android:pathData="M50,51 L54,55 L58,51"
+        android:strokeWidth="0.8"
+        android:strokeColor="#00BCD4"
+        android:fillColor="#00000000"
+        android:strokeLineJoin="round"/>
+
+    <!-- ======= MANDIBLES (side jaw extensions) ======= -->
+    <!-- Left mandible -->
+    <path
+        android:pathData="M28,51 L22,57 L20,65 L30,66 L36,60 L36,51 Z"
+        android:fillColor="#0C1C2A"
+        android:strokeColor="#00838F"
+        android:strokeWidth="1.0"/>
+    <!-- Left mandible vents -->
+    <path android:pathData="M23,58 L22,64" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M26,59 L25,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M29,60 L28,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+
+    <!-- Right mandible -->
+    <path
+        android:pathData="M80,51 L86,57 L88,65 L78,66 L72,60 L72,51 Z"
+        android:fillColor="#0C1C2A"
+        android:strokeColor="#00838F"
+        android:strokeWidth="1.0"/>
+    <!-- Right mandible vents -->
+    <path android:pathData="M85,58 L86,64" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M82,59 L83,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M79,60 L80,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+
+    <!-- ======= NECK ======= -->
+    <path
+        android:pathData="M44,51 L44,57 L64,57 L64,51"
+        android:fillColor="#0F2030"
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1.1"/>
+    <!-- Neck power conduit (red) -->
+    <path
+        android:pathData="M48,54 L60,54"
+        android:strokeWidth="1.2"
+        android:strokeColor="#FF1744"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"/>
+    <!-- Neck conduit glow -->
+    <path
+        android:pathData="M48,54 L60,54"
+        android:strokeWidth="3"
+        android:strokeColor="#22FF1744"
+        android:fillColor="#00000000"/>
+
+    <!-- ======= CHEST ARMOR PLATE ======= -->
+    <path
+        android:pathData="M36,57 L32,66 L76,66 L72,57 Z"
+        android:fillColor="#0D1E2D"
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1.3"/>
+    <!-- Chest center divider -->
+    <path
+        android:pathData="M54,57 L54,66"
+        android:strokeWidth="0.8"
+        android:strokeColor="#00BCD4"
+        android:fillColor="#00000000"/>
+    <!-- Chest V danger mark -->
+    <path
+        android:pathData="M44,58 L54,62 L64,58"
+        android:strokeWidth="1.3"
+        android:strokeColor="#FF1744"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+    <!-- Chest V glow -->
+    <path
+        android:pathData="M44,58 L54,62 L64,58"
+        android:strokeWidth="3.5"
+        android:strokeColor="#22FF1744"
+        android:fillColor="#00000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+    <!-- Left side vents -->
+    <path android:pathData="M36,59 L42,59" android:strokeWidth="1.1" android:strokeColor="#00838F" android:fillColor="#00000000" android:strokeLineCap="round"/>
+    <path android:pathData="M36,61 L42,61" android:strokeWidth="1.1" android:strokeColor="#00838F" android:fillColor="#00000000" android:strokeLineCap="round"/>
+    <path android:pathData="M36,63 L42,63" android:strokeWidth="1.1" android:strokeColor="#00838F" android:fillColor="#00000000" android:strokeLineCap="round"/>
+    <!-- Right side vents -->
+    <path android:pathData="M66,59 L72,59" android:strokeWidth="1.1" android:strokeColor="#00838F" android:fillColor="#00000000" android:strokeLineCap="round"/>
+    <path android:pathData="M66,61 L72,61" android:strokeWidth="1.1" android:strokeColor="#00838F" android:fillColor="#00000000" android:strokeLineCap="round"/>
+    <path android:pathData="M66,63 L72,63" android:strokeWidth="1.1" android:strokeColor="#00838F" android:fillColor="#00000000" android:strokeLineCap="round"/>
+
+</vector>

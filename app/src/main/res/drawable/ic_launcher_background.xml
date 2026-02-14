@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- === BASE: Deep navy background === -->
+    <path
+        android:fillColor="#0D1117"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- === SUBTLE GRID (fine, low-opacity) === -->
+    <!-- Horizontal lines -->
+    <path android:pathData="M0,18L108,18" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M0,36L108,36" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M0,54L108,54" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M0,72L108,72" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M0,90L108,90" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <!-- Vertical lines -->
+    <path android:pathData="M18,0L18,108" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M36,0L36,108" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M54,0L54,108" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M72,0L72,108" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+    <path android:pathData="M90,0L90,108" android:strokeWidth="0.4" android:strokeColor="#1C2A3A" android:fillColor="#00000000"/>
+
+    <!-- === CIRCUIT TRACES (teal) === -->
+    <!-- Main horizontal spine -->
+    <path android:pathData="M18,54L90,54" android:strokeWidth="1.2" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <!-- Vertical trunk -->
+    <path android:pathData="M54,18L54,90" android:strokeWidth="1.2" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+
+    <!-- Branch traces - horizontal -->
+    <path android:pathData="M18,36L36,36" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M72,36L90,36" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M18,72L36,72" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M72,72L90,72" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+
+    <!-- Branch traces - vertical -->
+    <path android:pathData="M36,18L36,36" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M72,18L72,36" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M36,72L36,90" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M72,72L72,90" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+
+    <!-- L-shaped traces connecting grid to spine -->
+    <path android:pathData="M36,36L36,54" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M72,36L72,54" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M36,54L36,72" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+    <path android:pathData="M72,54L72,72" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
+
+    <!-- === SOLDER PADS / NODES === -->
+    <!-- Center node (large) -->
+    <path android:pathData="M54,54m-5,0a5,5 0 1,0 10,0a5,5 0 1,0 -10,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M54,54m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" android:fillColor="#0D1117"/>
+
+    <!-- Mid-ring nodes (medium) -->
+    <path android:pathData="M36,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M36,54m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
+
+    <path android:pathData="M72,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M72,54m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
+
+    <path android:pathData="M54,36m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M54,36m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
+
+    <path android:pathData="M54,72m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M54,72m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
+
+    <!-- Corner intersection nodes (small) -->
+    <path android:pathData="M36,36m-2.5,0a2.5,2.5 0 1,0 5,0a2.5,2.5 0 1,0 -5,0" android:fillColor="#00838F"/>
+    <path android:pathData="M72,36m-2.5,0a2.5,2.5 0 1,0 5,0a2.5,2.5 0 1,0 -5,0" android:fillColor="#00838F"/>
+    <path android:pathData="M36,72m-2.5,0a2.5,2.5 0 1,0 5,0a2.5,2.5 0 1,0 -5,0" android:fillColor="#00838F"/>
+    <path android:pathData="M72,72m-2.5,0a2.5,2.5 0 1,0 5,0a2.5,2.5 0 1,0 -5,0" android:fillColor="#00838F"/>
+
+    <!-- Edge terminal pads -->
+    <path android:pathData="M18,54m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M90,54m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M54,18m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M54,90m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#4DD0E1"/>
+
+    <!-- Corner branch terminals -->
+    <path android:pathData="M18,36m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M90,36m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M18,72m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M90,72m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+
+    <path android:pathData="M36,18m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M72,18m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M36,90m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+    <path android:pathData="M72,90m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0" android:fillColor="#4DD0E1"/>
+
+    <!-- === CORNER BRACKETS (registration marks) === -->
+    <!-- Top-left -->
+    <path android:pathData="M6,14L6,6L14,6" android:strokeWidth="1.0" android:strokeColor="#4DD0E1" android:fillColor="#00000000"/>
+    <!-- Top-right -->
+    <path android:pathData="M94,6L102,6L102,14" android:strokeWidth="1.0" android:strokeColor="#4DD0E1" android:fillColor="#00000000"/>
+    <!-- Bottom-left -->
+    <path android:pathData="M6,94L6,102L14,102" android:strokeWidth="1.0" android:strokeColor="#4DD0E1" android:fillColor="#00000000"/>
+    <!-- Bottom-right -->
+    <path android:pathData="M94,102L102,102L102,94" android:strokeWidth="1.0" android:strokeColor="#4DD0E1" android:fillColor="#00000000"/>
+
+    <!-- === ACCENT GLOW (soft centre radial hint via large low-opacity circle) === -->
+    <path
+        android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0"
+        android:fillColor="#0600BCD4"
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="0.3"/>
+
+</vector>

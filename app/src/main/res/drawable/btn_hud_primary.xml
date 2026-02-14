@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- PRESSED state -->
+    <item android:state_pressed="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#CC00BCD4" />
+                    <corners android:radius="2dp" />
+                </shape>
+            </item>
+            <item android:left="1dp" android:top="1dp" android:right="1dp" android:bottom="1dp">
+                <shape android:shape="rectangle">
+                    <solid android:color="#2200BCD4" />
+                    <corners android:radius="1dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <!-- DISABLED state -->
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <solid android:color="#11FFFFFF" />
+            <stroke android:width="1dp" android:color="#33FFFFFF" />
+            <corners android:radius="2dp" />
+        </shape>
+    </item>
+
+    <!-- DEFAULT state -->
+    <item>
+        <layer-list>
+            <!-- Border -->
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#FF00BCD4" />
+                    <corners android:radius="2dp" />
+                </shape>
+            </item>
+            <!-- Inner fill -->
+            <item android:left="1.5dp" android:top="1.5dp" android:right="1.5dp" android:bottom="1.5dp">
+                <shape android:shape="rectangle">
+                    <solid android:color="#1A00BCD4" />
+                    <corners android:radius="1dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+</selector>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Base fill: very dark navy, semi-transparent -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#E6050E18" />
+        </shape>
+    </item>
+
+    <!-- Top border accent: teal 2dp line -->
+    <item android:bottom="0dp" android:left="0dp" android:right="0dp" android:top="0dp">
+        <shape android:shape="rectangle">
+            <stroke android:width="1.5dp" android:color="#FF00BCD4" />
+            <solid android:color="#00000000" />
+        </shape>
+    </item>
+
+    <!-- Top glow bar (thick, semi-transparent teal) -->
+    <item android:bottom="0dp" android:left="0dp" android:right="0dp" android:top="0dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#3300BCD4"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+
+</layer-list>

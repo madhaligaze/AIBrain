@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF0A1520"
+    tools:context=".MainActivity">
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  AR VIEWPORT                                -->
+    <!-- ═══════════════════════════════════════════ -->
+    <io.github.sceneview.ar.ArSceneView
+        android:id="@+id/sceneView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  TOP STATUS BAR                             -->
+    <!-- ═══════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_gravity="top"
+        android:background="#CC050E18"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+
+        <!-- Left: Status -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Blinking status dot (teal = online) -->
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/ic_status_dot"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SYS:ONLINE"
+                android:textColor="#FF00BCD4"
+                android:textSize="10sp"
+                android:letterSpacing="0.15"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Center: App title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="СТРУКТУРНЫЙ АНАЛИЗ"
+            android:textColor="#FFFFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.2"
+            android:fontFamily="monospace" />
+
+        <!-- Right: Session ID -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SES·001"
+                android:textColor="#8800BCD4"
+                android:textSize="9sp"
+                android:letterSpacing="0.1"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/tv_frame_counter"
+                android:text="FRM:0000"
+                android:textColor="#5500BCD4"
+                android:textSize="9sp"
+                android:letterSpacing="0.1"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Top bar bottom separator line -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_gravity="top"
+        android:layout_marginTop="52dp"
+        android:background="#4400BCD4" />
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  CORNER BRACKETS                            -->
+    <!-- ═══════════════════════════════════════════ -->
+
+    <!-- Top-Left -->
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="60dp"
+        android:src="@drawable/ic_bracket_tl"
+        android:scaleType="fitXY" />
+
+    <!-- Top-Right (mirror horizontal) -->
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="60dp"
+        android:src="@drawable/ic_bracket_tl"
+        android:scaleType="fitXY"
+        android:scaleX="-1" />
+
+    <!-- Bottom-Left (mirror vertical) -->
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="190dp"
+        android:src="@drawable/ic_bracket_tl"
+        android:scaleType="fitXY"
+        android:scaleY="-1" />
+
+    <!-- Bottom-Right (mirror both) -->
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="190dp"
+        android:src="@drawable/ic_bracket_tl"
+        android:scaleType="fitXY"
+        android:scaleX="-1"
+        android:scaleY="-1" />
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  CENTER RETICLE                             -->
+    <!-- ═══════════════════════════════════════════ -->
+    <FrameLayout
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="center">
+
+        <!-- Outer ring (teal, very transparent) -->
+        <View
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/ic_reticle_ring_outer" />
+
+        <!-- Inner cross horizontal -->
+        <View
+            android:layout_width="20dp"
+            android:layout_height="1dp"
+            android:layout_gravity="center"
+            android:background="#8800BCD4" />
+
+        <!-- Inner cross vertical -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:background="#8800BCD4" />
+
+        <!-- Center dot -->
+        <View
+            android:layout_width="4dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center"
+            android:background="@drawable/ic_status_dot" />
+    </FrameLayout>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  SIDE DATA STRIP (left)                     -->
+    <!-- ═══════════════════════════════════════════ -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|start"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical"
+        android:alpha="0.7">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="X:—"
+            android:textColor="#FF00BCD4"
+            android:textSize="9sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Y:—"
+            android:textColor="#FF00BCD4"
+            android:textSize="9sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Z:—"
+            android:textColor="#FF00BCD4"
+            android:textSize="9sp"
+            android:fontFamily="monospace" />
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp"
+            android:background="#3300BCD4" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PTS:0"
+            android:textColor="#4400BCD4"
+            android:textSize="9sp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!--  BOTTOM HUD PANEL                           -->
+    <!-- ═══════════════════════════════════════════ -->
+    <LinearLayout
+        android:id="@+id/ai_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_hud_panel"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="20dp">
+
+        <!-- Panel top label strip -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▸ БЛОК УПРАВЛЕНИЯ"
+                android:textColor="#5500BCD4"
+                android:textSize="9sp"
+                android:letterSpacing="0.2"
+                android:fontFamily="monospace" />
+
+            <!-- Spacer -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:background="#2200BCD4" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AR·v2"
+                android:textColor="#3300BCD4"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Hint text line -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="›"
+                android:textColor="#FF00BCD4"
+                android:textSize="18sp"
+                android:layout_marginEnd="8dp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/tv_ai_hint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Наведите камеру и нажмите СТАРТ"
+                android:textColor="#DDFFFFFF"
+                android:textSize="13sp"
+                android:letterSpacing="0.03"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Button row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btn_start"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="СТАРТ"
+                android:textColor="#FF00BCD4"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_hud_primary"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <Button
+                android:id="@+id/btn_add_point"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1.3"
+                android:layout_marginEnd="8dp"
+                android:text="ОПОРА"
+                android:textColor="#CC00BCD4"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_hud_primary"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btn_model"
+                android:layout_width="0dp"
+                android:layout_height="42dp"
+                android:layout_weight="1.4"
+                android:text="АНАЛИЗ"
+                android:textColor="#FFFFFFFF"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_hud_danger"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Bottom info strip -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:alpha="0.5">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ТОЧЕК: 0"
+                android:textColor="#FF00BCD4"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="РЕЖИМ: ОЖИДАНИЕ"
+                android:textColor="#FF00BCD4"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>
