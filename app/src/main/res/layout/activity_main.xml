@@ -22,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="52dp"
         android:layout_gravity="top"
-        android:background="@android:color/transparent"
+        android:background="#CC050E18"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="16dp"
@@ -58,7 +58,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="СТРУКТУРНЫЙ АНАЛИЗ"
-            android:textColor="@color/text_light"
+            android:textColor="#FFFFFFFF"
             android:textSize="12sp"
             android:textStyle="bold"
             android:letterSpacing="0.2"
@@ -329,14 +329,13 @@
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
                 android:text="СТАРТ"
-                android:textColor="@color/text_light"
+                android:textColor="#FF00BCD4"
                 android:textSize="12sp"
                 android:letterSpacing="0.12"
                 android:fontFamily="monospace"
                 android:background="@drawable/btn_hud_primary"
                 android:stateListAnimator="@null"
-                android:elevation="0dp"
-                android:backgroundTint="@null" />
+                android:elevation="0dp" />
 
             <Button
                 android:id="@+id/btn_add_point"
@@ -345,17 +344,14 @@
                 android:layout_weight="1.3"
                 android:layout_marginEnd="8dp"
                 android:text="ОПОРА"
-                android:textColor="@color/text_light"
+                android:textColor="#CC00BCD4"
                 android:textSize="12sp"
                 android:letterSpacing="0.12"
                 android:fontFamily="monospace"
                 android:background="@drawable/btn_hud_primary"
                 android:stateListAnimator="@null"
                 android:elevation="0dp"
-                android:visibility="gone"
-                android:backgroundTint="@null" />
-            android:backgroundTint="@null"
-            android:visibility="gone" />
+                android:visibility="gone" />
 
             <Button
                 android:id="@+id/btn_model"
@@ -363,17 +359,14 @@
                 android:layout_height="42dp"
                 android:layout_weight="1.4"
                 android:text="АНАЛИЗ"
-                android:textColor="@color/text_light"
+                android:textColor="#FFFFFFFF"
                 android:textSize="12sp"
                 android:letterSpacing="0.12"
                 android:fontFamily="monospace"
                 android:background="@drawable/btn_hud_danger"
                 android:stateListAnimator="@null"
                 android:elevation="0dp"
-                android:visibility="gone"
-                android:backgroundTint="@null" />
-            android:backgroundTint="@null"
-            android:visibility="gone" />
+                android:visibility="gone" />
 
         </LinearLayout>
 
