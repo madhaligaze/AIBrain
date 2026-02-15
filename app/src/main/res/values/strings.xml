@@ -15,5 +15,9 @@
     <string name="hint_modeling_done_options">Готово! Вариантов: %1$d</string>
     <string name="hint_modeling_error">Ошибка моделирования</string>
     <string name="hint_failure_message">Сбой: %1$s</string>
+    <string name="hint_network_unstable">⚠️ Нестабильная сеть (%1$d сбоев)</string>
+    <string name="hint_reconnect_wait">🔄 Переподключение... Попытка %1$d (ждём %2$dс)</string>
+    <string name="hint_session_restored">✅ Сессия восстановлена</string>
+    <string name="hint_modeling_retry">⏳ Попытка %1$d/%2$d, следующая через %3$dс...</string>
     <string name="unknown_error">неизвестная ошибка</string>
 </resources>
