@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     // НАСТРОЙКА СЕТИ (Проверь IP!)
     private val api = Retrofit.Builder()
-        .baseUrl("http://192.168.1.148:8000")
+        .baseUrl("http://100.119.60.35:8000")
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(ApiService::class.java)
