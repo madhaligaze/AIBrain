@@ -19,6 +19,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val MAX_SESSION_RETRY_ATTEMPTS = 5
+        private const val SESSION_RETRY_DELAY_MS = 1_500L
+    }
+
     private lateinit var sceneView: ArSceneView
     private lateinit var tvAiHint: TextView
     private lateinit var btnStart: Button
@@ -72,27 +77,47 @@ class MainActivity : AppCompatActivity() {
 
     private fun startSession() {
         scope.launch {
-            try {
-                tvAiHint.text = getString(R.string.hint_connecting)
-                val response = api.startSession()
-                if (response.isSuccessful) {
-                    currentSessionId = response.body()?.session_id
-                    tvAiHint.text = getString(R.string.hint_session_active)
+            tvAiHint.text = getString(R.string.hint_connecting)
+            val response = establishSessionWithRetry()
+            if (response != null && response.isSuccessful) {
+                currentSessionId = response.body()?.session_id
+                tvAiHint.text = getString(R.string.hint_session_active)
 
-                    // Меняем кнопки
-                    btnStart.visibility = View.GONE
-                    btnAddPoint.visibility = View.VISIBLE
-                    btnModel.visibility = View.VISIBLE
+                // Меняем кнопки
+                btnStart.visibility = View.GONE
+                btnAddPoint.visibility = View.VISIBLE
+                btnModel.visibility = View.VISIBLE
 
-                    // Запускаем отправку видео
-                    startStreaming()
-                } else {
-                    tvAiHint.text = getString(R.string.hint_server_error_code, response.code())
-                }
-            } catch (e: Exception) {
-                tvAiHint.text = getString(R.string.hint_no_connection, e.message ?: getString(R.string.unknown_error))
+                // Запускаем отправку видео
+                startStreaming()
+            } else if (response != null) {
+                tvAiHint.text = getString(R.string.hint_server_error_code, response.code())
+            } else {
+                tvAiHint.text = getString(R.string.hint_retry_failed)
             }
         }
+    }
+
+    private suspend fun establishSessionWithRetry(): retrofit2.Response<SessionResponse>? {
+        repeat(MAX_SESSION_RETRY_ATTEMPTS) { attempt ->
+            try {
+                return withContext(Dispatchers.IO) { api.startSession() }
+            } catch (e: Exception) {
+                val attemptNumber = attempt + 1
+                val hasMoreRetries = attemptNumber < MAX_SESSION_RETRY_ATTEMPTS
+                if (!hasMoreRetries) {
+                    return null
+                }
+
+                tvAiHint.text = getString(
+                    R.string.hint_reconnecting_attempt,
+                    attemptNumber,
+                    MAX_SESSION_RETRY_ATTEMPTS
+                )
+                delay(SESSION_RETRY_DELAY_MS)
+            }
+        }
+        return null
     }
 
     // ЛОГИКА СТРИМИНГА: Отправляем кадр каждые 1000мс
@@ -100,7 +125,12 @@ class MainActivity : AppCompatActivity() {
         isStreaming = true
         scope.launch(Dispatchers.IO) {
             while (isStreaming && currentSessionId != null) {
-                val frame = sceneView.arSession?.update() ?: continue
+                val frame = try {
+                    sceneView.arSession?.update()
+                } catch (_: Exception) {
+                    delay(500)
+                    null
+                } ?: continue
                 val cameraImage = try {
                     frame.acquireCameraImage()
                 } catch (_: Exception) {
@@ -128,7 +158,8 @@ class MainActivity : AppCompatActivity() {
 
                     // 4. Отправляем на сервер
                     try {
-                        val response = api.streamData(currentSessionId!!, payload)
+                        val sessionId = currentSessionId ?: break
+                        val response = api.streamData(sessionId, payload)
                         withContext(Dispatchers.Main) {
                             if (response.isSuccessful) {
                                 // Показываем подсказки от ИИ (если есть)
@@ -188,9 +219,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestModeling() {
         scope.launch {
+            val sessionId = currentSessionId
+            if (sessionId == null) {
+                tvAiHint.text = getString(R.string.hint_session_not_started)
+                return@launch
+            }
+
             tvAiHint.text = getString(R.string.hint_ai_thinking)
             try {
-                val response = api.startModeling(currentSessionId!!)
+                val response = api.startModeling(sessionId)
                 if (response.isSuccessful) {
                     val count = response.body()?.options?.size ?: 0
                     tvAiHint.text = getString(R.string.hint_modeling_done_options, count)
