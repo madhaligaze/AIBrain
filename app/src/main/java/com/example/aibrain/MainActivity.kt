@@ -169,10 +169,8 @@ class MainActivity : AppCompatActivity() {
                             val hints = response.body()?.hints
                             withContext(Dispatchers.Main) {
                                 if (!hints.isNullOrEmpty()) {
-                                    tvAiHint.text = getString(
-                                        R.string.hint_ai_message,
-                                        hints.values.first().joinToString()
-                                    )
+                                    tvAiHint.text = getString(R.string.hint_ai_prefix) +
+                                        " " + hints.values.first().joinToString()
                                 }
                             }
                             true
