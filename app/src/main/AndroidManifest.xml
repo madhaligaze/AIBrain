@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Камера как таковая — не требуем (required="false"),
+         потому что жёсткое требование идёт ниже через AR-фичу -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- AR — обязательно, фильтрует устройства без ARCore -->
     <uses-feature
         android:name="android.hardware.camera.ar"
         android:required="true" />
@@ -20,7 +27,6 @@
         android:theme="@style/Theme.AIBrain"
         android:usesCleartextTraffic="true">
 
-        <!-- ОБЯЗАТЕЛЬНО для ARCore: tools:replace перекрывает значение из arsceneview (optional) -->
         <meta-data
             android:name="com.google.ar.core"
             android:value="required"
