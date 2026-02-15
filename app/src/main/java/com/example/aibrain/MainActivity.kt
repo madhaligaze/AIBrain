@@ -8,13 +8,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.ar.core.Config
 import io.github.sceneview.ar.ArSceneView
-import io.github.sceneview.ar.node.ArModelNode
-import io.github.sceneview.ar.node.PlacementMode
-import io.github.sceneview.math.Position
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
@@ -49,7 +50,7 @@ class MainActivity : AppCompatActivity() {
         btnModel = findViewById(R.id.btn_model)
 
         // Настройка AR сцены
-        sceneView.configureSession { session, config ->
+        sceneView.configureSession { _, config ->
             config.focusMode = Config.FocusMode.AUTO
             config.lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
         }
@@ -72,11 +73,11 @@ class MainActivity : AppCompatActivity() {
     private fun startSession() {
         scope.launch {
             try {
-                tvAiHint.text = "Подключение..."
+                tvAiHint.text = getString(R.string.hint_connecting)
                 val response = api.startSession()
                 if (response.isSuccessful) {
                     currentSessionId = response.body()?.session_id
-                    tvAiHint.text = "Сессия активна. Ищите пол и ставьте точки."
+                    tvAiHint.text = getString(R.string.hint_session_active)
 
                     // Меняем кнопки
                     btnStart.visibility = View.GONE
@@ -86,10 +87,10 @@ class MainActivity : AppCompatActivity() {
                     // Запускаем отправку видео
                     startStreaming()
                 } else {
-                    tvAiHint.text = "Ошибка сервера: ${response.code()}"
+                    tvAiHint.text = getString(R.string.hint_server_error_code, response.code())
                 }
             } catch (e: Exception) {
-                tvAiHint.text = "Нет связи: ${e.message}"
+                tvAiHint.text = getString(R.string.hint_no_connection, e.message ?: getString(R.string.unknown_error))
             }
         }
     }
@@ -100,7 +101,11 @@ class MainActivity : AppCompatActivity() {
         scope.launch(Dispatchers.IO) {
             while (isStreaming && currentSessionId != null) {
                 val frame = sceneView.arSession?.update() ?: continue
-                val cameraImage = try { frame.acquireCameraImage() } catch (e: Exception) { null }
+                val cameraImage = try {
+                    frame.acquireCameraImage()
+                } catch (_: Exception) {
+                    null
+                }
 
                 if (cameraImage != null) {
                     // 1. Конвертируем картинку
@@ -129,11 +134,14 @@ class MainActivity : AppCompatActivity() {
                                 // Показываем подсказки от ИИ (если есть)
                                 val hints = response.body()?.hints
                                 if (!hints.isNullOrEmpty()) {
-                                    tvAiHint.text = "ИИ: ${hints.values.first().joinToString()}"
+                                    tvAiHint.text = getString(
+                                        R.string.hint_ai_message,
+                                        hints.values.first().joinToString()
+                                    )
                                 }
                             }
                         }
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Ошибки сети игнорируем в стриме, чтобы не фризить UI
                     }
                 }
@@ -171,26 +179,26 @@ class MainActivity : AppCompatActivity() {
             )
             userMarkers.add(markerData)
 
-            Toast.makeText(this, "Точка добавлена!", Toast.LENGTH_SHORT).show()
-            tvAiHint.text = "Точек: ${userMarkers.size}"
+            Toast.makeText(this, R.string.toast_point_added, Toast.LENGTH_SHORT).show()
+            tvAiHint.text = getString(R.string.hint_points_count, userMarkers.size)
         } else {
-            Toast.makeText(this, "Подойдите ближе к поверхности", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.toast_move_closer, Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun requestModeling() {
         scope.launch {
-            tvAiHint.text = "ИИ думает..."
+            tvAiHint.text = getString(R.string.hint_ai_thinking)
             try {
                 val response = api.startModeling(currentSessionId!!)
                 if (response.isSuccessful) {
                     val count = response.body()?.options?.size ?: 0
-                    tvAiHint.text = "Готово! Вариантов: $count"
+                    tvAiHint.text = getString(R.string.hint_modeling_done_options, count)
                 } else {
-                    tvAiHint.text = "Ошибка моделирования"
+                    tvAiHint.text = getString(R.string.hint_modeling_error)
                 }
             } catch (e: Exception) {
-                tvAiHint.text = "Сбой: ${e.message}"
+                tvAiHint.text = getString(R.string.hint_failure_message, e.message ?: getString(R.string.unknown_error))
             }
         }
     }

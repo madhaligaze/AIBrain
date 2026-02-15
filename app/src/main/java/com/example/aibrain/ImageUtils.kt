@@ -1,14 +1,11 @@
 package com.example.aibrain
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.media.Image
 import android.util.Base64
 import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
 
 object ImageUtils {
     fun convertYuvToJpegBase64(image: Image): String {
