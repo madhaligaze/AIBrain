@@ -1,5 +1,230 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+═══════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════
+
+PHILOSOPHY:
+  Холодные технологичные цвета, высокий контраст, минималистичная палитра
+
+PRIMARY COLORS:
+  • Electric Cyan - Основной акцент (HUD, кнопки, текст)
+  • Neon Orange - Предупреждения и важные действия
+  • Matrix Green - Успех, подтверждения
+  • Deep Space - Фон, панели
+
+USAGE:
+  ✓ Cyan - Для информационных элементов
+  ✓ Orange - Для активных действий
+  ✓ Green - Для успешных операций
+  ✓ Red - Только для critical warnings
+  ✗ Никакого фиолетового!
+-->
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- PRIMARY PALETTE -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <!-- Electric Cyan - Главный акцентный цвет -->
+    <color name="cyan_primary">#00F5FF</color>
+    <color name="cyan_bright">#00E6F5</color>
+    <color name="cyan_medium">#00BCD4</color>
+    <color name="cyan_dark">#0097A7</color>
+    <color name="cyan_deeper">#006064</color>
+
+    <!-- Neon Orange - Акцент для действий -->
+    <color name="orange_primary">#FF8C42</color>
+    <color name="orange_bright">#FFА366</color>
+    <color name="orange_medium">#FF6B35</color>
+    <color name="orange_dark">#E65100</color>
+
+    <!-- Matrix Green - Успех -->
+    <color name="green_primary">#00FF88</color>
+    <color name="green_bright">#00FFА0</color>
+    <color name="green_medium">#00E676</color>
+    <color name="green_dark">#00C853</color>
+
+    <!-- Alert Red - Критические предупреждения -->
+    <color name="red_primary">#FF3838</color>
+    <color name="red_bright">#FF5252</color>
+    <color name="red_medium">#E31E24</color>
+    <color name="red_dark">#C62828</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- BACKGROUND & PANELS -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <!-- Deep Space - Фоновые цвета -->
+    <color name="space_deepest">#050A0F</color>
+    <color name="space_deep">#0A1520</color>
+    <color name="space_medium">#0F1F2E</color>
+    <color name="space_light">#15293D</color>
+
+    <!-- Panel Backgrounds (с прозрачностью) -->
+    <color name="panel_dark">#DD0A1520</color>
+    <color name="panel_medium">#CC15293D</color>
+    <color name="panel_light">#BB1F3447</color>
+    <color name="panel_glass">#8815293D</color>
+
+    <!-- Transparent для оверлеев -->
+    <color name="transparent">#00000000</color>
+    <color name="transparent_dark">#88000000</color>
+    <color name="transparent_panel">#AA0A1520</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- TEXT COLORS -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <color name="text_white">#FFFFFF</color>
+    <color name="text_white_bright">#F5F5F5</color>
+    <color name="text_white_medium">#E0E0E0</color>
+    <color name="text_white_dim">#B0B0B0</color>
+    <color name="text_white_faint">#808080</color>
+
+    <color name="text_cyan">#00F5FF</color>
+    <color name="text_orange">#FF8C42</color>
+    <color name="text_green">#00FF88</color>
+    <color name="text_red">#FF3838</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- UI COMPONENTS -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <!-- Button States -->
+    <color name="button_primary_bg">#FF00F5FF</color>
+    <color name="button_primary_text">#FF050A0F</color>
+    <color name="button_secondary_bg">#3300F5FF</color>
+    <color name="button_secondary_text">#FF00F5FF</color>
+    <color name="button_disabled_bg">#33808080</color>
+    <color name="button_disabled_text">#88808080</color>
+
+    <!-- Status Indicators -->
+    <color name="status_online">#FF00FF88</color>
+    <color name="status_warning">#FFFF8C42</color>
+    <color name="status_error">#FFFF3838</color>
+    <color name="status_offline">#FF808080</color>
+
+    <!-- Progress & Loading -->
+    <color name="progress_cyan">#FF00F5FF</color>
+    <color name="progress_orange">#FFFF8C42</color>
+    <color name="progress_bg">#3315293D</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- AR & 3D VISUALIZATION -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <!-- Anchor Points -->
+    <color name="anchor_cyan">#FF00F5FF</color>
+    <color name="anchor_orange">#FFFF8C42</color>
+    <color name="anchor_green">#FF00FF88</color>
+
+    <!-- Load Heatmap -->
+    <color name="heatmap_safe">#FF00FF88</color>      <!-- Green: 0-70% load -->
+    <color name="heatmap_warning">#FFFFFF8C42</color>  <!-- Orange: 70-90% load -->
+    <color name="heatmap_danger">#FFFF3838</color>     <!-- Red: 90-100% load -->
+    <color name="heatmap_critical">#FFCC0000</color>   <!-- Dark Red: >100% load -->
+
+    <!-- Grid & Guides -->
+    <color name="grid_line">#1100F5FF</color>
+    <color name="guide_line">#3300F5FF</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- GRADIENTS -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <color name="gradient_cyan_start">#FF00F5FF</color>
+    <color name="gradient_cyan_end">#0000F5FF</color>
+
+    <color name="gradient_orange_start">#FFFF8C42</color>
+    <color name="gradient_orange_end">#00FF8C42</color>
+
+    <color name="gradient_space_start">#CC0A1520</color>
+    <color name="gradient_space_end">#00050A0F</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- LEGACY (для обратной совместимости, но не использовать!) -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <!-- Старые фиолетовые цвета - DEPRECATED -->
+    <color name="purple_200">#00F5FF</color> <!-- Заменено на cyan -->
+    <color name="purple_500">#00BCD4</color> <!-- Заменено на cyan -->
+    <color name="purple_700">#006064</color> <!-- Заменено на cyan -->
+
+    <!-- Teal - DEPRECATED, используйте cyan -->
+    <color name="teal_200">#00F5FF</color>
+    <color name="teal_700">#00BCD4</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- THEME COLORS -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <!-- Status Bar & Navigation Bar -->
+    <color name="status_bar">#FF050A0F</color>
+    <color name="navigation_bar">#FF0A1520</color>
+
+    <!-- System UI -->
+    <color name="window_background">#FF050A0F</color>
+    <color name="card_background">#FF15293D</color>
+    <color name="divider">#3300F5FF</color>
+
+    <!-- Material Design defaults -->
+    <color name="colorPrimary">@color/cyan_primary</color>
+    <color name="colorPrimaryDark">@color/cyan_dark</color>
+    <color name="colorAccent">@color/orange_primary</color>
+    <color name="colorOnPrimary">@color/space_deepest</color>
+    <color name="colorOnSecondary">@color/text_white</color>
+    <color name="colorSurface">@color/space_medium</color>
+    <color name="colorOnSurface">@color/text_white</color>
+    <color name="colorError">@color/red_primary</color>
+    <color name="colorOnError">@color/text_white</color>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- ALPHA VARIANTS (для анимаций и оверлеев) -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+
+    <!-- Cyan Alpha -->
+    <color name="cyan_alpha_10">#1A00F5FF</color>
+    <color name="cyan_alpha_20">#3300F5FF</color>
+    <color name="cyan_alpha_30">#4D00F5FF</color>
+    <color name="cyan_alpha_40">#6600F5FF</color>
+    <color name="cyan_alpha_50">#8000F5FF</color>
+    <color name="cyan_alpha_60">#9900F5FF</color>
+    <color name="cyan_alpha_70">#B300F5FF</color>
+    <color name="cyan_alpha_80">#CC00F5FF</color>
+    <color name="cyan_alpha_90">#E600F5FF</color>
+
+    <!-- Orange Alpha -->
+    <color name="orange_alpha_10">#1AFF8C42</color>
+    <color name="orange_alpha_20">#33FF8C42</color>
+    <color name="orange_alpha_30">#4DFF8C42</color>
+    <color name="orange_alpha_40">#66FF8C42</color>
+    <color name="orange_alpha_50">#80FF8C42</color>
+    <color name="orange_alpha_60">#99FF8C42</color>
+    <color name="orange_alpha_70">#B3FF8C42</color>
+    <color name="orange_alpha_80">#CCFF8C42</color>
+    <color name="orange_alpha_90">#E6FF8C42</color>
+
+    <!-- White Alpha -->
+    <color name="white_alpha_10">#1AFFFFFF</color>
+    <color name="white_alpha_20">#33FFFFFF</color>
+    <color name="white_alpha_30">#4DFFFFFF</color>
+    <color name="white_alpha_40">#66FFFFFF</color>
+    <color name="white_alpha_50">#80FFFFFF</color>
+    <color name="white_alpha_60">#99FFFFFF</color>
+    <color name="white_alpha_70">#B3FFFFFF</color>
+    <color name="white_alpha_80">#CCFFFFFF</color>
+    <color name="white_alpha_90">#E6FFFFFF</color>
+
+    <!-- Black Alpha -->
+    <color name="black_alpha_10">#1A000000</color>
+    <color name="black_alpha_20">#33000000</color>
+    <color name="black_alpha_30">#4D000000</color>
+    <color name="black_alpha_40">#66000000</color>
+    <color name="black_alpha_50">#80000000</color>
+    <color name="black_alpha_60">#99000000</color>
+    <color name="black_alpha_70">#B3000000</color>
+    <color name="black_alpha_80">#CC000000</color>
+    <color name="black_alpha_90">#E6000000</color>
+
 </resources>

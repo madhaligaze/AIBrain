@@ -1,70 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+═══════════════════════════════════════════════════════════════════════
+  ФУТУРИСТИЧНЫЙ ИНЖЕНЕРНЫЙ UI - СТИЛЬ TONY STARK / CYBERPUNK
+═══════════════════════════════════════════════════════════════════════
+
+ЦВЕТОВАЯ СХЕМА:
+  • Основной: Electric Cyan (#00F5FF, #00BCD4)
+  • Акцент: Neon Orange (#FF6B35, #FF8C42)
+  • Фон: Deep Space (#050A0F, #0A1520)
+  • Текст: Bright White (#FFFFFF, #E0E0E0)
+  • Danger: Red Alert (#FF3838, #E31E24)
+  • Success: Matrix Green (#00FF88, #00E676)
+
+ПРИНЦИПЫ ДИЗАЙНА:
+  ✓ Минимализм и чёткость линий
+  ✓ Монолитность шрифта (monospace)
+  ✓ Прозрачные панели с размытием
+  ✓ Анимации появления/исчезновения
+  ✓ Цветовая индикация состояний
+  ✓ Сетка и направляющие линии
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF0A1520"
+    android:background="#FF050A0F"
     tools:context=".MainActivity">
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  AR VIEWPORT                                -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- AR VIEWPORT -->
+    <!--═════════════════════════════════════════════════════════════════════-->
     <io.github.sceneview.ar.ArSceneView
         android:id="@+id/sceneView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  TOP STATUS BAR                             -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- GRID OVERLAY (Тонкая сетка для инженерного вида) -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/grid_overlay"
+        android:alpha="0.15" />
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- TOP HUD BAR -->
+    <!--═════════════════════════════════════════════════════════════════════-->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="52dp"
+        android:layout_height="60dp"
         android:layout_gravity="top"
-        android:background="#CC050E18"
+        android:background="@drawable/bg_top_bar"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:elevation="8dp">
 
-        <!-- Left: Status -->
+        <!-- LEFT: System Status -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:orientation="vertical">
 
-            <!-- Blinking status dot (teal = online) -->
-            <View
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:background="@drawable/ic_status_dot"
-                android:layout_marginEnd="8dp"/>
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Status Indicator Dot -->
+                <View
+                    android:id="@+id/status_indicator"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/ic_status_dot_cyan"
+                    android:layout_marginEnd="10dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SYSTEM ONLINE"
+                    android:textColor="#FF00F5FF"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.15"
+                    android:fontFamily="monospace"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_frame_counter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FRM:0000"
+                android:textColor="#8800F5FF"
+                android:textSize="9sp"
+                android:letterSpacing="0.1"
+                android:fontFamily="monospace"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- CENTER: Title -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="SYS:ONLINE"
-                android:textColor="#FF00BCD4"
-                android:textSize="10sp"
-                android:letterSpacing="0.15"
+                android:text="▸ СТРУКТУРНЫЙ АНАЛИЗ ◂"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.25"
                 android:fontFamily="monospace" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AI-POWERED ANALYSIS ENGINE"
+                android:textColor="#6600F5FF"
+                android:textSize="8sp"
+                android:letterSpacing="0.15"
+                android:fontFamily="monospace"
+                android:layout_marginTop="1dp" />
         </LinearLayout>
 
-        <!-- Center: App title -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="СТРУКТУРНЫЙ АНАЛИЗ"
-            android:textColor="#FFFFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.2"
-            android:fontFamily="monospace" />
-
-        <!-- Right: Session ID -->
+        <!-- RIGHT: Session Info -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -75,232 +142,386 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="SES·001"
-                android:textColor="#8800BCD4"
-                android:textSize="9sp"
-                android:letterSpacing="0.1"
+                android:text="SESSION·001"
+                android:textColor="#8800F5FF"
+                android:textSize="10sp"
+                android:letterSpacing="0.12"
                 android:fontFamily="monospace" />
 
             <TextView
+                android:id="@+id/tv_mode_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:id="@+id/tv_frame_counter"
-                android:text="FRM:0000"
-                android:textColor="#5500BCD4"
+                android:text="MODE: STANDBY"
+                android:textColor="#5500F5FF"
                 android:textSize="9sp"
                 android:letterSpacing="0.1"
-                android:fontFamily="monospace" />
+                android:fontFamily="monospace"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Top bar bottom separator line -->
+    <!-- Top Bar Separator Line -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="2dp"
         android:layout_gravity="top"
-        android:layout_marginTop="52dp"
-        android:background="#4400BCD4" />
+        android:layout_marginTop="60dp"
+        android:background="@drawable/gradient_line_cyan" />
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  CORNER BRACKETS                            -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- CORNER FRAME (Инженерные углы) -->
+    <!--═════════════════════════════════════════════════════════════════════-->
 
     <!-- Top-Left -->
     <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|start"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="60dp"
-        android:src="@drawable/ic_bracket_tl"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="70dp"
+        android:src="@drawable/ic_corner_tl_cyan"
         android:scaleType="fitXY" />
 
-    <!-- Top-Right (mirror horizontal) -->
+    <!-- Top-Right -->
     <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|end"
-        android:layout_marginEnd="12dp"
-        android:layout_marginTop="60dp"
-        android:src="@drawable/ic_bracket_tl"
-        android:scaleType="fitXY"
-        android:scaleX="-1" />
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="70dp"
+        android:src="@drawable/ic_corner_tr_cyan"
+        android:scaleType="fitXY" />
 
-    <!-- Bottom-Left (mirror vertical) -->
+    <!-- Bottom-Left -->
     <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="bottom|start"
-        android:layout_marginStart="12dp"
-        android:layout_marginBottom="190dp"
-        android:src="@drawable/ic_bracket_tl"
-        android:scaleType="fitXY"
-        android:scaleY="-1" />
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="220dp"
+        android:src="@drawable/ic_corner_bl_cyan"
+        android:scaleType="fitXY" />
 
-    <!-- Bottom-Right (mirror both) -->
+    <!-- Bottom-Right -->
     <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="12dp"
-        android:layout_marginBottom="190dp"
-        android:src="@drawable/ic_bracket_tl"
-        android:scaleType="fitXY"
-        android:scaleX="-1"
-        android:scaleY="-1" />
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="220dp"
+        android:src="@drawable/ic_corner_br_cyan"
+        android:scaleType="fitXY" />
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  CENTER RETICLE                             -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- CENTER TARGETING RETICLE -->
+    <!--═════════════════════════════════════════════════════════════════════-->
     <FrameLayout
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
         android:layout_gravity="center">
 
-        <!-- Outer ring (teal, very transparent) -->
+        <!-- Outer Ring -->
         <View
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:background="@drawable/ic_reticle_ring_outer" />
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="@drawable/ic_reticle_outer_ring" />
 
-        <!-- Inner cross horizontal -->
+        <!-- Horizontal Crosshair -->
         <View
-            android:layout_width="20dp"
-            android:layout_height="1dp"
+            android:layout_width="32dp"
+            android:layout_height="2dp"
             android:layout_gravity="center"
-            android:background="#8800BCD4" />
+            android:background="#CC00F5FF" />
 
-        <!-- Inner cross vertical -->
+        <!-- Vertical Crosshair -->
         <View
-            android:layout_width="1dp"
-            android:layout_height="20dp"
+            android:layout_width="2dp"
+            android:layout_height="32dp"
             android:layout_gravity="center"
-            android:background="#8800BCD4" />
+            android:background="#CC00F5FF" />
 
-        <!-- Center dot -->
+        <!-- Center Dot -->
         <View
-            android:layout_width="4dp"
-            android:layout_height="4dp"
+            android:layout_width="6dp"
+            android:layout_height="6dp"
             android:layout_gravity="center"
-            android:background="@drawable/ic_status_dot" />
+            android:background="@drawable/ic_dot_cyan" />
+
+        <!-- Corner Indicators -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:text="┌"
+            android:textColor="#AA00F5FF"
+            android:textSize="24sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:text="┐"
+            android:textColor="#AA00F5FF"
+            android:textSize="24sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:text="└"
+            android:textColor="#AA00F5FF"
+            android:textSize="24sp"
+            android:fontFamily="monospace" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:text="┘"
+            android:textColor="#AA00F5FF"
+            android:textSize="24sp"
+            android:fontFamily="monospace" />
     </FrameLayout>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  SIDE DATA STRIP (left)                     -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- LEFT SIDEBAR DATA -->
+    <!--═════════════════════════════════════════════════════════════════════-->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical|start"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="14dp"
         android:orientation="vertical"
-        android:alpha="0.7">
+        android:background="@drawable/bg_data_panel"
+        android:padding="12dp"
+        android:alpha="0.85">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="X:—"
-            android:textColor="#FF00BCD4"
-            android:textSize="9sp"
-            android:fontFamily="monospace" />
+            android:text="▸ COORDINATES"
+            android:textColor="#6600F5FF"
+            android:textSize="8sp"
+            android:letterSpacing="0.15"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="8dp" />
 
         <TextView
+            android:id="@+id/tv_coord_x"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Y:—"
-            android:textColor="#FF00BCD4"
-            android:textSize="9sp"
-            android:fontFamily="monospace" />
+            android:text="X: 0.00"
+            android:textColor="#FF00F5FF"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="4dp" />
 
         <TextView
+            android:id="@+id/tv_coord_y"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Z:—"
-            android:textColor="#FF00BCD4"
-            android:textSize="9sp"
+            android:text="Y: 0.00"
+            android:textColor="#FF00F5FF"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_coord_z"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Z: 0.00"
+            android:textColor="#FF00F5FF"
+            android:textSize="11sp"
             android:fontFamily="monospace" />
 
         <View
-            android:layout_width="24dp"
+            android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="6dp"
-            android:layout_marginBottom="6dp"
-            android:background="#3300BCD4" />
+            android:background="#3300F5FF"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="PTS:0"
-            android:textColor="#4400BCD4"
-            android:textSize="9sp"
+            android:text="▸ ANCHORS"
+            android:textColor="#6600F5FF"
+            android:textSize="8sp"
+            android:letterSpacing="0.15"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="6dp" />
+
+        <TextView
+            android:id="@+id/tv_points_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PTS: 0"
+            android:textColor="#FF00FF88"
+            android:textSize="11sp"
             android:fontFamily="monospace" />
     </LinearLayout>
 
-    <!-- ═══════════════════════════════════════════ -->
-    <!--  BOTTOM HUD PANEL                           -->
-    <!-- ═══════════════════════════════════════════ -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- RIGHT SIDEBAR STATUS -->
+    <!--═════════════════════════════════════════════════════════════════════-->
     <LinearLayout
-        android:id="@+id/ai_panel"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:background="@drawable/bg_hud_panel"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="14dp"
         android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="20dp">
+        android:background="@drawable/bg_data_panel"
+        android:padding="12dp"
+        android:alpha="0.85">
 
-        <!-- Panel top label strip -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="▸ STATUS"
+            android:textColor="#6600F5FF"
+            android:textSize="8sp"
+            android:letterSpacing="0.15"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="8dp" />
+
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="10dp">
+            android:layout_marginBottom="6dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="▸ БЛОК УПРАВЛЕНИЯ"
-                android:textColor="#5500BCD4"
-                android:textSize="9sp"
-                android:letterSpacing="0.2"
-                android:fontFamily="monospace" />
-
-            <!-- Spacer -->
             <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:background="#2200BCD4" />
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/ic_dot_green"
+                android:layout_marginEnd="6dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AR·v2"
-                android:textColor="#3300BCD4"
+                android:text="AR TRACKING"
+                android:textColor="#FF00FF88"
                 android:textSize="9sp"
                 android:fontFamily="monospace" />
         </LinearLayout>
 
-        <!-- Hint text line -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="6dp">
+
+            <View
+                android:id="@+id/connection_dot"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/ic_dot_orange"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AI SERVER"
+                android:textColor="#FFFF8C42"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@drawable/ic_dot_cyan"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SCANNING"
+                android:textColor="#FF00F5FF"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- BOTTOM CONTROL PANEL -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <LinearLayout
+        android:id="@+id/control_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_control_panel"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="24dp"
+        android:elevation="12dp">
+
+        <!-- Panel Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="14dp">
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▸ CONTROL INTERFACE"
+                android:textColor="#6600F5FF"
+                android:textSize="9sp"
+                android:letterSpacing="0.2"
+                android:fontFamily="monospace" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/gradient_line_cyan_fade" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="v3.0"
+                android:textColor="#4400F5FF"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- AI Hint Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/bg_hint_box"
+            android:padding="12dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="›"
-                android:textColor="#FF00BCD4"
-                android:textSize="18sp"
-                android:layout_marginEnd="8dp"
+                android:textColor="#FF00F5FF"
+                android:textSize="20sp"
+                android:layout_marginEnd="10dp"
                 android:fontFamily="monospace" />
 
             <TextView
@@ -308,14 +529,103 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Наведите камеру и нажмите СТАРТ"
-                android:textColor="#DDFFFFFF"
+                android:text="Наведите камеру на конструкцию и нажмите СТАРТ"
+                android:textColor="#FFFFFFFF"
                 android:textSize="13sp"
-                android:letterSpacing="0.03"
+                android:lineSpacingExtra="2dp"
                 android:fontFamily="monospace" />
         </LinearLayout>
 
-        <!-- Button row -->
+        <!-- Main Buttons Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btn_start"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="▸ СТАРТ"
+                android:textColor="#FF050A0F"
+                android:textSize="13sp"
+                android:letterSpacing="0.15"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:background="@drawable/btn_primary_cyan"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <Button
+                android:id="@+id/btn_add_point"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1.2"
+                android:layout_marginEnd="6dp"
+                android:text="ОПОРА"
+                android:textColor="#FF00F5FF"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_secondary_cyan"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btn_scan"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="СКАН"
+                android:textColor="#FF00F5FF"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_secondary_cyan"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btn_3d_model"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1.3"
+                android:layout_marginEnd="6dp"
+                android:text="3D MODEL"
+                android:textColor="#FFFF8C42"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_tertiary_orange"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btn_analyze"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1.3"
+                android:text="АНАЛИЗ"
+                android:textColor="#FF050A0F"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:background="@drawable/btn_primary_green"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Secondary Buttons Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -323,83 +633,154 @@
             android:gravity="center">
 
             <Button
-                android:id="@+id/btn_start"
+                android:id="@+id/btn_save_session"
                 android:layout_width="0dp"
-                android:layout_height="42dp"
+                android:layout_height="36dp"
                 android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:text="СТАРТ"
-                android:textColor="#FF00BCD4"
-                android:textSize="12sp"
-                android:letterSpacing="0.12"
-                android:fontFamily="monospace"
-                android:background="@drawable/btn_hud_primary"
+                android:layout_marginEnd="6dp"
+                android:text="💾"
+                android:textSize="16sp"
+                android:background="@drawable/btn_icon_cyan"
                 android:stateListAnimator="@null"
                 android:elevation="0dp" />
 
             <Button
-                android:id="@+id/btn_add_point"
+                android:id="@+id/btn_export"
                 android:layout_width="0dp"
-                android:layout_height="42dp"
-                android:layout_weight="1.3"
-                android:layout_marginEnd="8dp"
-                android:text="ОПОРА"
-                android:textColor="#CC00BCD4"
-                android:textSize="12sp"
-                android:letterSpacing="0.12"
-                android:fontFamily="monospace"
-                android:background="@drawable/btn_hud_primary"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="📦"
+                android:textSize="16sp"
+                android:background="@drawable/btn_icon_cyan"
                 android:stateListAnimator="@null"
-                android:elevation="0dp"
-                android:visibility="gone" />
+                android:elevation="0dp" />
 
             <Button
-                android:id="@+id/btn_model"
+                android:id="@+id/btn_settings"
                 android:layout_width="0dp"
-                android:layout_height="42dp"
-                android:layout_weight="1.4"
-                android:text="АНАЛИЗ"
-                android:textColor="#FFFFFFFF"
-                android:textSize="12sp"
-                android:letterSpacing="0.12"
-                android:fontFamily="monospace"
-                android:background="@drawable/btn_hud_danger"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="⚙️"
+                android:textSize="16sp"
+                android:background="@drawable/btn_icon_cyan"
                 android:stateListAnimator="@null"
-                android:elevation="0dp"
-                android:visibility="gone" />
-
+                android:elevation="0dp" />
         </LinearLayout>
+    </LinearLayout>
 
-        <!-- Bottom info strip -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- VARIANT SELECTION PANEL (Initially Hidden) -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <LinearLayout
+        android:id="@+id/variant_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_variant_panel"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="24dp"
+        android:elevation="12dp"
+        android:visibility="gone">
+
+        <!-- Panel Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="▸ ВЫБОР ВАРИАНТА КОНСТРУКЦИИ"
+            android:textColor="#FFFF8C42"
+            android:textSize="11sp"
+            android:letterSpacing="0.2"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Variant Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="12dp"
-            android:alpha="0.5">
+            android:layout_marginBottom="12dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="ТОЧЕК: 0"
-                android:textColor="#FF00BCD4"
-                android:textSize="9sp"
-                android:fontFamily="monospace" />
-
-            <View
+            <Button
+                android:id="@+id/btn_variant_1"
                 android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="ВАРИАНТ 1\n---%"
+                android:textColor="#FF00F5FF"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_variant"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="РЕЖИМ: ОЖИДАНИЕ"
-                android:textColor="#FF00BCD4"
-                android:textSize="9sp"
-                android:fontFamily="monospace" />
+            <Button
+                android:id="@+id/btn_variant_2"
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="ВАРИАНТ 2\n---%"
+                android:textColor="#FF00F5FF"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_variant"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <Button
+                android:id="@+id/btn_variant_3"
+                android:layout_width="0dp"
+                android:layout_height="72dp"
+                android:layout_weight="1"
+                android:text="ВАРИАНТ 3\n---%"
+                android:textColor="#FF00F5FF"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_variant"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
         </LinearLayout>
 
+        <!-- Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_physics"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="📊 ФИЗИКА"
+                android:textColor="#FFFF8C42"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_secondary_orange"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <Button
+                android:id="@+id/btn_accept"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1.5"
+                android:text="✓ ПРИНЯТЬ"
+                android:textColor="#FF050A0F"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:background="@drawable/btn_primary_green"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+        </LinearLayout>
     </LinearLayout>
 
 </FrameLayout>

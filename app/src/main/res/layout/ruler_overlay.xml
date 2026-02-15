@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+═══════════════════════════════════════════════════════════════════════
+  AR RULER UI OVERLAY - iOS Measure Style
+═══════════════════════════════════════════════════════════════════════
+
+  Компоненты:
+  • Floating distance label (центр экрана)
+  • Measurement history list (внизу)
+  • Control buttons (измерение, отмена, сохранить)
+  • Grid toggle
+  • Units switcher (m ↔ ft)
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/ruler_overlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone">
+
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <!-- CENTER DISTANCE DISPLAY (iOS Style) -->
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <LinearLayout
+        android:id="@+id/distance_display"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/bg_distance_display"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:elevation="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:visibility="gone">
+
+        <!-- Distance Value -->
+        <TextView
+            android:id="@+id/tv_distance_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0.00 m"
+            android:textColor="#FFFFFFFF"
+            android:textSize="48sp"
+            android:fontFamily="sans-serif-light"
+            android:letterSpacing="-0.02" />
+
+        <!-- Accuracy Indicator -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="8dp">
+
+            <View
+                android:id="@+id/accuracy_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/ic_dot_green"
+                android:layout_marginEnd="6dp" />
+
+            <TextView
+                android:id="@+id/tv_accuracy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Точность: высокая"
+                android:textColor="#AA00FF88"
+                android:textSize="12sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <!-- TOP INSTRUCTION TEXT -->
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <TextView
+        android:id="@+id/tv_ruler_instruction"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Нажмите на поверхность чтобы начать измерение"
+        android:textColor="#CCFFFFFF"
+        android:textSize="14sp"
+        android:textAlignment="center"
+        android:fontFamily="sans-serif-medium"
+        android:background="#88000000"
+        android:padding="12dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="80dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <!-- POINT COUNTER (Top Right) -->
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <LinearLayout
+        android:id="@+id/point_counter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/bg_point_counter"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="140dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ТОЧЕК: "
+            android:textColor="#6600F5FF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.15" />
+
+        <TextView
+            android:id="@+id/tv_point_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textColor="#FF00F5FF"
+            android:textSize="18sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <!-- MEASUREMENT HISTORY (Bottom Drawer) -->
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <LinearLayout
+        android:id="@+id/measurement_history"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_measurement_drawer"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="20dp"
+        android:elevation="12dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/ruler_controls"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="▸ ИЗМЕРЕНИЯ"
+                android:textColor="#6600F5FF"
+                android:textSize="10sp"
+                android:letterSpacing="0.2"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/tv_history_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#4400F5FF"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Measurements List (RecyclerView placeholder) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_measurements"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="200dp"
+            android:nestedScrollingEnabled="false" />
+
+        <!-- Empty State -->
+        <TextView
+            android:id="@+id/tv_empty_history"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Нет сохранённых измерений"
+            android:textColor="#66FFFFFF"
+            android:textSize="12sp"
+            android:textAlignment="center"
+            android:padding="20dp"
+            android:fontFamily="monospace" />
+    </LinearLayout>
+
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <!-- RULER CONTROLS (Bottom) -->
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <LinearLayout
+        android:id="@+id/ruler_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_ruler_controls"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="24dp"
+        android:elevation="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Mode Selector -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/btn_mode_linear"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="ЛИНИЯ"
+                android:textColor="#FF00F5FF"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_mode_active"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <Button
+                android:id="@+id/btn_mode_height"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="ВЫСОТА"
+                android:textColor="#6600F5FF"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_mode_inactive"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <Button
+                android:id="@+id/btn_mode_area"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="ПЛОЩАДЬ"
+                android:textColor="#6600F5FF"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_mode_inactive"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+        </LinearLayout>
+
+        <!-- Main Actions -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="12dp">
+
+            <!-- Undo -->
+            <Button
+                android:id="@+id/btn_ruler_undo"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="12dp"
+                android:text="↶"
+                android:textColor="#FFFF8C42"
+                android:textSize="24sp"
+                android:background="@drawable/btn_ruler_secondary"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <!-- Add Point / Measure -->
+            <Button
+                android:id="@+id/btn_ruler_measure"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="12dp"
+                android:text="+ ТОЧКА"
+                android:textColor="#FF050A0F"
+                android:textSize="14sp"
+                android:fontFamily="monospace"
+                android:textStyle="bold"
+                android:background="@drawable/btn_ruler_primary"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <!-- Finish / Save -->
+            <Button
+                android:id="@+id/btn_ruler_finish"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:text="✓"
+                android:textColor="#FF00FF88"
+                android:textSize="24sp"
+                android:background="@drawable/btn_ruler_success"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Secondary Actions -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Grid Toggle -->
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_grid"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:text="Сетка"
+                android:textColor="#AAFFFFFF"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:checked="true"
+                app:thumbTint="#FF00F5FF"
+                app:trackTint="#3300F5FF" />
+
+            <!-- Snap Toggle -->
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_snap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:text="Привязка"
+                android:textColor="#AAFFFFFF"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:checked="true"
+                app:thumbTint="#FF00F5FF"
+                app:trackTint="#3300F5FF" />
+
+            <!-- Units Toggle -->
+            <Button
+                android:id="@+id/btn_units_toggle"
+                android:layout_width="60dp"
+                android:layout_height="32dp"
+                android:text="м"
+                android:textColor="#FF00F5FF"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_units_toggle"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <!-- QUICK INFO PANEL (Left Side) -->
+    <!--═══════════════════════════════════════════════════════════════════-->
+    <LinearLayout
+        android:id="@+id/quick_info_panel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_quick_info"
+        android:padding="12dp"
+        android:layout_marginStart="14dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <!-- Total Distance -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Σ"
+                android:textColor="#FF00F5FF"
+                android:textSize="16sp"
+                android:fontFamily="monospace"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/tv_total_distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.00"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Point Count -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="●"
+                android:textColor="#FF00F5FF"
+                android:textSize="14sp"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/tv_info_points"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Area (if applicable) -->
+        <LinearLayout
+            android:id="@+id/layout_area_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▭"
+                android:textColor="#FFFF8C42"
+                android:textSize="14sp"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/tv_area_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 m²"
+                android:textColor="#FFFFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
