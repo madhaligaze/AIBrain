@@ -22,7 +22,7 @@
         android:layout_width="match_parent"
         android:layout_height="52dp"
         android:layout_gravity="top"
-        android:background="#CC050E18"
+        android:background="@android:color/transparent"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="16dp"
@@ -335,7 +335,8 @@
                 android:fontFamily="monospace"
                 android:background="@drawable/btn_hud_primary"
                 android:stateListAnimator="@null"
-                android:elevation="0dp" />
+                android:elevation="0dp"
+                android:backgroundTint="@null" />
 
             <Button
                 android:id="@+id/btn_add_point"
@@ -351,7 +352,8 @@
                 android:background="@drawable/btn_hud_primary"
                 android:stateListAnimator="@null"
                 android:elevation="0dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:backgroundTint="@null" />
 
             <Button
                 android:id="@+id/btn_model"
@@ -366,7 +368,8 @@
                 android:background="@drawable/btn_hud_danger"
                 android:stateListAnimator="@null"
                 android:elevation="0dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:backgroundTint="@null" />
 
         </LinearLayout>
 
