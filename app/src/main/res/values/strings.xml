@@ -8,6 +8,7 @@
     <string name="hint_retry_failed">Не удалось переподключиться. Проверьте сеть и попробуйте снова.</string>
     <string name="hint_session_not_started">Сессия не запущена. Нажмите СТАРТ.</string>
     <string name="hint_ai_message">ИИ: %1$s</string>
+    <string name="hint_ai_prefix">ИИ:</string>
     <string name="toast_point_added">Точка добавлена!</string>
     <string name="hint_points_count">Точек: %1$d</string>
     <string name="toast_move_closer">Подойдите ближе к поверхности</string>
