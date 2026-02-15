@@ -17,7 +17,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AIBrain">
+        android:theme="@style/Theme.AIBrain"
+        android:usesCleartextTraffic="true">
 
         <!-- ОБЯЗАТЕЛЬНО для ARCore: tools:replace перекрывает значение из arsceneview (optional) -->
         <meta-data
