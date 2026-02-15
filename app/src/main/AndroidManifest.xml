@@ -19,10 +19,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AIBrain">
 
-        <!-- ОБЯЗАТЕЛЬНО для ARCore -->
+        <!-- ОБЯЗАТЕЛЬНО для ARCore: tools:replace перекрывает значение из arsceneview (optional) -->
         <meta-data
             android:name="com.google.ar.core"
-            android:value="required" />
+            android:value="required"
+            tools:replace="android:value" />
 
         <activity
             android:name=".MainActivity"

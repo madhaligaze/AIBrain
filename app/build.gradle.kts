@@ -5,11 +5,11 @@ plugins {
 
 android {
     namespace = "com.example.aibrain"
-    compileSdk = 34 // Рекомендуется использовать последний для сборки
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.aibrain"
-        minSdk = 27 // Твой целевой API 27
+        minSdk = 27
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -33,6 +33,22 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    // Исключаем конфликтующие META-INF файлы из зависимостей AR-библиотек
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
+}
+
+// Обходное решение для конфликтов разрешения зависимостей при использовании arsceneview
+configurations.all {
+    resolutionStrategy {
+        // Принудительно используем совместимую версию filament
+        force("com.google.ar.sceneform:core:1.17.1")
+    }
 }
 
 dependencies {
@@ -41,17 +57,17 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
-    // ARCore - Ядро дополненной реальности
-    implementation("com.google.ar:core:1.37.0")
+    // ARCore
+    implementation("com.google.ar:core:1.41.0")
 
-    // ArSceneView - Упрощенная отрисовка 3D для AR
+    // ArSceneView — версия 0.10.0 совместима с Gradle 8.x (НЕ с 9.x)
     implementation("io.github.sceneview:arsceneview:0.10.0")
 
-    // Retrofit - Связь с твоим Python сервером
+    // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
-    // Coroutines - Чтобы приложение не зависало при отправке фото
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     testImplementation("junit:junit:4.13.2")
