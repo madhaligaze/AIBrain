@@ -35,13 +35,13 @@ USAGE:
 
     <!-- Neon Orange - Акцент для действий -->
     <color name="orange_primary">#FF8C42</color>
-    <color name="orange_bright">#FFА366</color>
+    <color name="orange_bright">#FFA366</color>
     <color name="orange_medium">#FF6B35</color>
     <color name="orange_dark">#E65100</color>
 
     <!-- Matrix Green - Успех -->
     <color name="green_primary">#00FF88</color>
-    <color name="green_bright">#00FFА0</color>
+    <color name="green_bright">#00FFA0</color>
     <color name="green_medium">#00E676</color>
     <color name="green_dark">#00C853</color>
 
@@ -121,7 +121,7 @@ USAGE:
 
     <!-- Load Heatmap -->
     <color name="heatmap_safe">#FF00FF88</color>      <!-- Green: 0-70% load -->
-    <color name="heatmap_warning">#FFFFFF8C42</color>  <!-- Orange: 70-90% load -->
+    <color name="heatmap_warning">#FFFF8C42</color>   <!-- Orange: 70-90% load -->
     <color name="heatmap_danger">#FFFF3838</color>     <!-- Red: 90-100% load -->
     <color name="heatmap_critical">#FFCC0000</color>   <!-- Dark Red: >100% load -->
 
