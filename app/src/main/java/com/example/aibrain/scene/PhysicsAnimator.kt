@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import com.example.aibrain.SoundManager
 import com.example.aibrain.SoundType
 import com.example.aibrain.effects.ParticleSystem
@@ -28,7 +29,13 @@ class PhysicsAnimator(
     private val soundManager = SoundManager(context)
     private val effectScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val particleSystem = ParticleSystem(sceneView, effectScope)
-    private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+        vm?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
 
     private val activeAnimations = mutableMapOf<String, FallingState>()
 
@@ -98,9 +105,8 @@ class PhysicsAnimator(
     }
 
     private fun vibrateCollapse(elementCount: Int) {
-        if (!vibrator.hasVibrator()) {
-            return
-        }
+        val vib = vibrator ?: return
+        if (!vib.hasVibrator()) return
 
         val duration = when {
             elementCount < 3 -> 100L
@@ -113,10 +119,10 @@ class PhysicsAnimator(
                 duration,
                 (255 * (elementCount / 50f).coerceAtMost(1f)).toInt().coerceAtLeast(40)
             )
-            vibrator.vibrate(effect)
+            vib.vibrate(effect)
         } else {
             @Suppress("DEPRECATION")
-            vibrator.vibrate(duration)
+            vib.vibrate(duration)
         }
     }
 

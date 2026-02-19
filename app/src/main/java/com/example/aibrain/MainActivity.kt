@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import android.os.Looper
 import android.util.Log
 import android.view.Menu
@@ -78,6 +79,16 @@ import com.example.aibrain.visualization.VoxelVisualizer
  * ДАТА: 15.02.2026
  */
 class MainActivity : AppCompatActivity() {
+    private fun getDefaultVibrator(): Vibrator? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vm?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+    }
+
 
     // ══════════════════════════════════════════════════════════════════════
     // СОСТОЯНИЯ ПРИЛОЖЕНИЯ
@@ -1336,7 +1347,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun vibrate(durationMs: Long = 50) {
         try {
-            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            val vibrator = getDefaultVibrator() ?: return
+            if (!vibrator.hasVibrator()) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
@@ -1995,7 +2007,8 @@ class MainActivity : AppCompatActivity() {
             .setTextColor(getColor(android.R.color.white))
             .show()
 
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        val vibrator = getDefaultVibrator() ?: return
+        if (!vibrator.hasVibrator()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
         } else {
@@ -2072,10 +2085,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun vibrateShort() {
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (!vibrator.hasVibrator()) {
-            return
-        }
+        val vibrator = getDefaultVibrator() ?: return
+        if (!vibrator.hasVibrator()) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createOneShot(70, 120))
