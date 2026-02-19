@@ -932,4 +932,10 @@
             android:text="🟡 Запретные зоны"
             android:textColor="@android:color/white" />
     </LinearLayout>
+
+    <!-- AR Ruler overlay (offline-ready) -->
+    <include
+        layout="@layout/ruler_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </FrameLayout>
