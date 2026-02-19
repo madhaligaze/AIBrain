@@ -4,7 +4,7 @@ import android.content.Context
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.sceneform.AnchorNode
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
 
 class ARSessionManager(
     private val context: Context,

@@ -6,7 +6,7 @@ import com.google.ar.sceneform.rendering.Color
 import com.google.ar.sceneform.rendering.Material
 import com.google.ar.sceneform.rendering.MaterialFactory
 import com.google.ar.sceneform.rendering.ShapeFactory
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
