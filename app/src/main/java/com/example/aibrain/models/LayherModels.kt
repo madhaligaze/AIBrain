@@ -77,8 +77,8 @@ object LayherModels {
         context: Context,
         material: Material
     ): ModelRenderable {
-        return ShapeFactory.makeSphere(
-            WEDGE_NODE_RADIUS,
+        return ShapeFactory.makeCube(
+            Vector3(WEDGE_NODE_RADIUS * 2f, WEDGE_NODE_RADIUS * 2f, WEDGE_NODE_RADIUS * 2f),
             Vector3.zero(),
             material
         )

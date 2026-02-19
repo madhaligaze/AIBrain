@@ -304,8 +304,8 @@ class ARRuler(
                 sceneView.context,
                 com.google.ar.sceneform.rendering.Color(0f, 0.96f, 1f) // Cyan
             ).thenAccept { material ->
-                val sphere = ShapeFactory.makeSphere(
-                    POINT_RADIUS,
+                val sphere = ShapeFactory.makeCube(
+                    Vector3(POINT_RADIUS * 2f, POINT_RADIUS * 2f, POINT_RADIUS * 2f),
                     Vector3.zero(),
                     material
                 )

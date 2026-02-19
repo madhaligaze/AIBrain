@@ -89,7 +89,7 @@ class VoxelVisualizer(
         val material = materials[voxel.type] ?: materials["available"] ?: return
 
         val renderable = if (voxel.type == "forbidden" && voxel.radius != null) {
-            ShapeFactory.makeSphere(voxel.radius, Vector3.zero(), material)
+            ShapeFactory.makeCube(Vector3(voxel.radius * 2f, voxel.radius * 2f, voxel.radius * 2f), Vector3.zero(), material)
         } else {
             val size = voxel.size ?: 0.25f
             ShapeFactory.makeCube(Vector3(size, size, size), Vector3.zero(), material)

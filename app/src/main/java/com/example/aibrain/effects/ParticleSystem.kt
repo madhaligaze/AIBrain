@@ -24,7 +24,7 @@ class ParticleSystem(
     fun createSparks(position: Vector3, count: Int = 30) {
         coroutineScope.launch {
             val sparkMaterial = MaterialFactory.makeOpaqueWithColor(
-                sceneView.view.context,
+                sceneView.context,
                 Color(1.0f, 0.7f, 0.2f)
             ).await()
 
@@ -36,7 +36,7 @@ class ParticleSystem(
 
     private suspend fun createSingleSpark(origin: Vector3, material: Material) {
         val spark = Node()
-        val sparkRenderable = ShapeFactory.makeSphere(0.01f, Vector3.zero(), material)
+        val sparkRenderable = ShapeFactory.makeCube(Vector3(0.01f, 0.01f, 0.01f), Vector3.zero(), material)
 
         spark.renderable = sparkRenderable
         spark.worldPosition = origin
@@ -76,7 +76,7 @@ class ParticleSystem(
     fun createDustCloud(position: Vector3, intensity: Float = 1.0f) {
         coroutineScope.launch {
             val dustMaterial = MaterialFactory.makeTransparentWithColor(
-                sceneView.view.context,
+                sceneView.context,
                 Color(0.6f, 0.6f, 0.5f, 0.3f)
             ).await()
 
@@ -91,7 +91,7 @@ class ParticleSystem(
         val particle = Node()
 
         val size = Random.nextFloat() * 0.15f + 0.05f
-        val dustRenderable = ShapeFactory.makeSphere(size, Vector3.zero(), material)
+        val dustRenderable = ShapeFactory.makeCube(Vector3(size, size, size), Vector3.zero(), material)
 
         particle.renderable = dustRenderable
         particle.worldPosition = Vector3(
@@ -131,7 +131,7 @@ class ParticleSystem(
     fun createShockwave(position: Vector3) {
         coroutineScope.launch {
             val shockwaveMaterial = MaterialFactory.makeTransparentWithColor(
-                sceneView.view.context,
+                sceneView.context,
                 Color(0.8f, 0.8f, 0.8f, 0.2f)
             ).await()
 
