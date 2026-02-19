@@ -33,11 +33,14 @@ class ConnectActivity : AppCompatActivity() {
         val prefs = getSharedPreferences(AppPrefs.PREFS_NAME, Context.MODE_PRIVATE)
         etUrl.setText(prefs.getString(AppPrefs.KEY_SERVER_BASE_URL, AppPrefs.defaultBaseUrl()).orEmpty())
 
-        btnContinue.isEnabled = false
+        btnContinue.isEnabled = true
         btnCheck.setOnClickListener { doHealthCheck() }
         btnContinue.setOnClickListener {
-            val url = normalizeBaseUrl(etUrl.text.toString()) ?: return@setOnClickListener
-            prefs.edit().putString(AppPrefs.KEY_SERVER_BASE_URL, url).apply()
+            val url = normalizeBaseUrl(etUrl.text.toString())
+            if (url != null) {
+                prefs.edit().putString(AppPrefs.KEY_SERVER_BASE_URL, url).apply()
+            }
+            // Even if URL is not set / server is offline, allow opening MainActivity (camera + ruler can work offline).
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
@@ -50,7 +53,8 @@ class ConnectActivity : AppCompatActivity() {
         val url = normalizeBaseUrl(etUrl.text.toString())
         if (url == null) {
             setStatus(false, getString(R.string.connect_invalid_url))
-            btnContinue.isEnabled = false
+            // Allow entering the app even if URL is invalid/empty; MainActivity will fall back to default URL.
+            btnContinue.isEnabled = true
             return
         }
 
@@ -66,11 +70,11 @@ class ConnectActivity : AppCompatActivity() {
             }
             if (ok) {
                 setStatus(true, getString(R.string.connect_status_online))
-                btnContinue.isEnabled = true
             } else {
                 setStatus(false, getString(R.string.connect_status_offline))
-                btnContinue.isEnabled = false
             }
+            // Continue should be available even without server connection (offline mode).
+            btnContinue.isEnabled = true
         }
     }
 
