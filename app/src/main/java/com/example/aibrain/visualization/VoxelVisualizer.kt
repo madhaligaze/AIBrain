@@ -98,7 +98,7 @@ class VoxelVisualizer(
             worldPosition = Vector3(voxel.position[0], voxel.position[1], voxel.position[2])
         }
 
-        node.setParent(sceneView)
+        node.setParent(sceneView.scene)
         voxelNodes.add(node)
     }
 

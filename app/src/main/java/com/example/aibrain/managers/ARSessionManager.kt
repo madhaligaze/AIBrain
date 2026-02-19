@@ -23,7 +23,7 @@ class ARSessionManager(
     fun addAnchor(anchor: Anchor) {
         currentAnchorNode?.let { it.setParent(null) }
         val anchorNode = AnchorNode(anchor)
-        anchorNode.setParent(sceneView)
+        anchorNode.setParent(sceneView.scene)
         currentAnchorNode = anchorNode
     }
 

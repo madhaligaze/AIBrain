@@ -51,7 +51,7 @@ class SceneBuilder(private val sceneView: ArSceneView) {
 
         applyStressColor(node, element.stress_color ?: colorFromLoadRatio(element.load_ratio ?: 0.0))
 
-        node.setParent(sceneView)
+        node.setParent(sceneView.scene)
         sceneNodes.add(node)
         nodeById[element.id] = node
     }
@@ -154,7 +154,7 @@ class SceneBuilder(private val sceneView: ArSceneView) {
             }
         }
 
-        node.setParent(sceneView)
+        node.setParent(sceneView.scene)
         sceneNodes.add(node)
         nodeById[element.id] = node
     }

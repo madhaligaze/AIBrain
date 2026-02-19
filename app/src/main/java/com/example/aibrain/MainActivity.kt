@@ -394,12 +394,12 @@ class MainActivity : AppCompatActivity() {
 
         if (mainAnchorNode == null) {
             mainAnchorNode = AnchorNode().also { anchor ->
-                anchor.setParent(sceneView)
+                anchor.setParent(sceneView.scene)
                 anchorNodes.add(anchor)
             }
         }
 
-        sceneView.addOnUpdateListener { _ ->
+        sceneView.scene.addOnUpdateListener { _: com.google.ar.sceneform.FrameTime ->
             val anchor = mainAnchorNode
             if (anchor != null && !lightingSetup) {
                 LightingSetup.setupLighting(sceneView, anchor)
@@ -1700,12 +1700,12 @@ class MainActivity : AppCompatActivity() {
 
         val anchor = hit.createAnchor()
         val anchorNode = AnchorNode(anchor).apply {
-            setParent(sceneView)
+            setParent(sceneView.scene)
         }
 
         // Маленький визуальный маркер
         val marker = Node().apply {
-            parent = anchorNode
+            setParent(anchorNode)
             localScale = Vector3(0.05f, 0.05f, 0.05f)
             renderable = ModelAssets.getCopy(ModelAssets.ModelType.WEDGE_NODE)
         }

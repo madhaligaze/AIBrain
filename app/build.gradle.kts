@@ -66,12 +66,15 @@ dependencies {
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.google.ar.sceneform:core:1.17.1")
+    // IMPORTANT: Do NOT add com.google.ar.sceneform:core/sceneform-base.
+    // SceneView already bundles a Sceneform-compatible API and a newer Filament.
+    // Adding Sceneform pulls an older Filament version and causes duplicate classes.
     // OkHttp (timeouts/logging)
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
