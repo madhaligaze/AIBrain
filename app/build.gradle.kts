@@ -63,12 +63,10 @@ dependencies {
 
     // ArSceneView — версия 0.10.0 совместима с Gradle 8.x (НЕ с 9.x)
     implementation("io.github.sceneview:arsceneview:0.10.0")
-   // Sceneform API classes used by the app modules (Node, AnchorNode, Scene, etc.)
-    implementation("com.gorisse.thomas.sceneform:sceneform:1.23.0")
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-
+    implementation("com.google.ar.sceneform:core:1.17.1")
     // OkHttp (timeouts/logging)
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 

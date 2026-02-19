@@ -2,9 +2,7 @@ package com.example.aibrain.scene
 
 import android.content.Context
 import com.google.ar.sceneform.Node
-import com.google.ar.sceneform.Scene
 import com.google.ar.sceneform.rendering.ModelRenderable
-import com.google.ar.sceneform.rendering.RenderableSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -17,7 +15,7 @@ import kotlin.coroutines.resumeWithException
 
 class LayerGlbManager(
     private val context: Context,
-    private val scene: Scene,
+    private val sceneView: io.github.sceneview.ar.ArSceneView,
     private val baseUrl: String,
 ) {
     private val client = OkHttpClient()
@@ -26,14 +24,7 @@ class LayerGlbManager(
     suspend fun loadLayer(layerId: String, relativePath: String): Node = withContext(Dispatchers.IO) {
         val local = downloadToCache(layerId, relativePath)
         val renderable = ModelRenderable.builder()
-            .setSource(
-                context,
-                RenderableSource.builder()
-                    .setSource(context, android.net.Uri.fromFile(local), RenderableSource.SourceType.GLB)
-                    .setScale(1.0f)
-                    .setRecenterMode(RenderableSource.RecenterMode.ROOT)
-                    .build()
-            )
+            .setSource(context, android.net.Uri.fromFile(local))
             .setRegistryId(local.absolutePath)
             .build()
             .await()
@@ -43,7 +34,7 @@ class LayerGlbManager(
             val node = Node().apply {
                 this.renderable = renderable
                 this.isEnabled = true
-                setParent(scene)
+                setParent(sceneView)
             }
             nodesByLayerId[layerId] = node
             node

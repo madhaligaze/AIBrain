@@ -1,7 +1,6 @@
 package com.example.aibrain.visualization
 
 import com.google.ar.sceneform.Node
-import com.google.ar.sceneform.Scene
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.Material
 import com.google.ar.sceneform.rendering.MaterialFactory
@@ -16,7 +15,6 @@ import com.google.ar.sceneform.rendering.Color as SceneColor
  * Визуализатор воксельной сетки ("Глаз ИИ").
  */
 class VoxelVisualizer(
-    private val scene: Scene,
     private val sceneView: ArSceneView,
     private val coroutineScope: CoroutineScope
 ) {
@@ -100,7 +98,7 @@ class VoxelVisualizer(
             worldPosition = Vector3(voxel.position[0], voxel.position[1], voxel.position[2])
         }
 
-        node.setParent(scene)
+        node.setParent(sceneView)
         voxelNodes.add(node)
     }
 

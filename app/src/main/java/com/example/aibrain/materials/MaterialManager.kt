@@ -2,7 +2,6 @@ package com.example.aibrain.materials
 
 import android.content.Context
 import com.google.ar.sceneform.rendering.Color
-import com.google.ar.sceneform.rendering.MaterialInstance
 import com.google.ar.sceneform.rendering.MaterialFactory
 import com.google.ar.sceneform.rendering.ModelRenderable
 import kotlinx.coroutines.future.await
@@ -12,7 +11,7 @@ import kotlinx.coroutines.future.await
  */
 class MaterialManager(private val context: Context) {
 
-    private val materials = mutableMapOf<MaterialType, MaterialInstance>()
+    private val materials = mutableMapOf<MaterialType, com.google.ar.sceneform.rendering.Material>()
 
     enum class MaterialType {
         GALVANIZED_STEEL,
@@ -64,7 +63,7 @@ class MaterialManager(private val context: Context) {
         }
     }
 
-    fun getMaterial(elementType: String, loadRatio: Double = 0.0): MaterialInstance {
+    fun getMaterial(elementType: String, loadRatio: Double = 0.0): com.google.ar.sceneform.rendering.Material {
         if (elementType == "deck" || elementType == "platform") {
             return materials[MaterialType.WOOD_DECK] ?: materials.getValue(MaterialType.GALVANIZED_STEEL)
         }
