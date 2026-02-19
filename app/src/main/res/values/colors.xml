@@ -121,7 +121,7 @@ USAGE:
 
     <!-- Load Heatmap -->
     <color name="heatmap_safe">#FF00FF88</color>      <!-- Green: 0-70% load -->
-    <color name="heatmap_warning">#FFFF8C42</color>   <!-- Orange: 70-90% load -->
+    <color name="heatmap_warning">#FFFF8C42</color>  <!-- Orange: 70-90% load -->
     <color name="heatmap_danger">#FFFF3838</color>     <!-- Red: 90-100% load -->
     <color name="heatmap_critical">#FFCC0000</color>   <!-- Dark Red: >100% load -->
 
