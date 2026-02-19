@@ -379,12 +379,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupARScene() {
-        sceneView.configureSession { _, config ->
-            config.focusMode = Config.FocusMode.AUTO
-            config.lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
-            config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
-        }
-
+        // Конфигурацию ARCore Session делаем через ARSessionManager (без SceneView-специфичных API).
 
         if (!::arManager.isInitialized) {
             arManager = ARSessionManager(this, sceneView)
@@ -911,7 +906,7 @@ class MainActivity : AppCompatActivity() {
         if (!rulerMode) return
 
         try {
-            val frame = sceneView.arSession?.update() ?: return
+            val frame = sceneView.arFrame ?: return
 
             val hits = frame.hitTest(
                 sceneView.width / 2f,
@@ -1024,7 +1019,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getTrackingAccuracy(): Float {
         try {
-            val frame = sceneView.arSession?.update() ?: return 0.5f
+            val frame = sceneView.arFrame ?: return 0.5f
             val camera = frame.camera
 
             return when (camera.trackingState) {
@@ -1314,7 +1309,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateCameraCoordinates() {
         try {
-            val frame = sceneView.arSession?.update() ?: return
+            val frame = sceneView.arFrame ?: return
             val pose = frame.camera.displayOrientedPose
 
             tvCoordX.text = "X:${"%.2f".format(pose.tx())}"
@@ -1475,11 +1470,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }.getOrDefault(emptyList())
 
-            val frame = try {
-                sceneView.arSession?.update()
-            } catch (_: Exception) {
-                null
-            } ?: return@withContext null
+            val frame = sceneView.arFrame ?: return@withContext null
 
             try {
                 val cam = frame.camera
@@ -1679,11 +1670,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val frame = try {
-            sceneView.arSession?.update()
-        } catch (_: Exception) {
-            null
-        } ?: return
+        val frame = sceneView.arFrame ?: return
 
         val x = sceneView.width / 2f
         val y = sceneView.height / 2f
