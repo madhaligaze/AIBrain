@@ -21,9 +21,9 @@ class ARSessionManager(
     }
 
     fun addAnchor(anchor: Anchor) {
-        currentAnchorNode?.let { sceneView.scene.removeChild(it) }
+        currentAnchorNode?.let { it.setParent(null) }
         val anchorNode = AnchorNode(anchor)
-        sceneView.scene.addChild(anchorNode)
+        anchorNode.setParent(sceneView)
         currentAnchorNode = anchorNode
     }
 
@@ -32,7 +32,7 @@ class ARSessionManager(
     }
 
     fun clearScene() {
-        currentAnchorNode?.let { sceneView.scene.removeChild(it) }
+        currentAnchorNode?.let { it.setParent(null) }
         currentAnchorNode = null
     }
 }

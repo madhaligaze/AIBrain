@@ -40,7 +40,7 @@ class ParticleSystem(
 
         spark.renderable = sparkRenderable
         spark.worldPosition = origin
-        spark.setParent(sceneView.scene)
+        spark.setParent(sceneView)
 
         val velocity = Vector3(
             Random.nextFloat() * 2 - 1,
@@ -99,7 +99,7 @@ class ParticleSystem(
             0.05f,
             origin.z + Random.nextFloat() * 0.5f - 0.25f
         )
-        particle.setParent(sceneView.scene)
+        particle.setParent(sceneView)
 
         animateDust(particle)
     }
@@ -145,7 +145,7 @@ class ParticleSystem(
 
             ring.renderable = ringRenderable
             ring.worldPosition = Vector3(position.x, 0.01f, position.z)
-            ring.setParent(sceneView.scene)
+            ring.setParent(sceneView)
 
             animateShockwave(ring)
         }

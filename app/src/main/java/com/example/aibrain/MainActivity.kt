@@ -249,7 +249,7 @@ class MainActivity : AppCompatActivity() {
         setupARScene()
         setupClickListeners()
         initializeRuler()
-        sceneBuilder = SceneBuilder(sceneView.scene)
+        sceneBuilder = SceneBuilder(sceneView)
         physicsAnimator = PhysicsAnimator(sceneView, sceneBuilder, this)
 
         showLoadingDialog("Загрузка моделей...")
@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity() {
         }
         viewModel = StructureViewModel(api)
         soundManager = SoundManager(this)
-        voxelVisualizer = VoxelVisualizer(sceneView.scene, sceneView, lifecycleScope)
+        voxelVisualizer = VoxelVisualizer(sceneView, lifecycleScope)
 
         lifecycleScope.launch {
             viewModel.structureState.collect { state ->
@@ -394,12 +394,12 @@ class MainActivity : AppCompatActivity() {
 
         if (mainAnchorNode == null) {
             mainAnchorNode = AnchorNode().also { anchor ->
-                anchor.setParent(sceneView.scene)
+                anchor.setParent(sceneView)
                 anchorNodes.add(anchor)
             }
         }
 
-        sceneView.scene.addOnUpdateListener { _ ->
+        sceneView.addOnUpdateListener { _ ->
             val anchor = mainAnchorNode
             if (anchor != null && !lightingSetup) {
                 LightingSetup.setupLighting(sceneView, anchor)
@@ -699,7 +699,7 @@ class MainActivity : AppCompatActivity() {
                 val layers = bundle.ui?.layers.orEmpty()
                 exportedLayers = layers
                 if (layerGlbManager == null) {
-                    layerGlbManager = LayerGlbManager(this@MainActivity, sceneView.scene, getCurrentServerUrl())
+                    layerGlbManager = LayerGlbManager(this@MainActivity, sceneView, getCurrentServerUrl())
                 }
 
                 for (layer in layers) {
@@ -1700,7 +1700,7 @@ class MainActivity : AppCompatActivity() {
 
         val anchor = hit.createAnchor()
         val anchorNode = AnchorNode(anchor).apply {
-            setParent(sceneView.scene)
+            setParent(sceneView)
         }
 
         // Маленький визуальный маркер

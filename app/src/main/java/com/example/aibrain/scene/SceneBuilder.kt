@@ -5,23 +5,20 @@ import com.example.aibrain.HeatmapItem
 import com.example.aibrain.ScaffoldElement
 import com.example.aibrain.assets.ModelAssets
 import com.google.ar.sceneform.Node
-import com.google.ar.sceneform.Scene
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.Color
-import com.google.ar.sceneform.rendering.MaterialInstance
-import com.google.ar.sceneform.rendering.ModelRenderable
+import io.github.sceneview.ar.ArSceneView
 import kotlin.math.sqrt
 
 /**
  * SceneBuilder с учетом Layher offset и кэшированием материалов.
  */
-class SceneBuilder(private val scene: Scene) {
+class SceneBuilder(private val sceneView: ArSceneView) {
 
     private val sceneNodes = mutableListOf<Node>()
     private val nodeById = mutableMapOf<String, Node>()
     private val allElements = mutableListOf<ScaffoldElement>()
-    private val materialCache = mutableMapOf<String, MaterialInstance>()
 
     private val flangeOffsets = mapOf(
         "standard" to FlangeOffset(bottom = 0.0f, top = 2.0f, nodePositions = listOf(0.0f, 0.5f, 1.0f, 1.5f, 2.0f)),
@@ -54,7 +51,7 @@ class SceneBuilder(private val scene: Scene) {
 
         applyStressColor(node, element.stress_color ?: colorFromLoadRatio(element.load_ratio ?: 0.0))
 
-        node.setParent(scene)
+        node.setParent(sceneView)
         sceneNodes.add(node)
         nodeById[element.id] = node
     }
@@ -125,26 +122,7 @@ class SceneBuilder(private val scene: Scene) {
     }
 
     private fun applyStressColor(node: Node, colorName: String) {
-        val renderable = node.renderable as? ModelRenderable ?: return
-        val material = materialCache.getOrPut(colorName) {
-            val color = getStressColor(colorName)
-            renderable.material.makeCopy().apply {
-                setFloat4("baseColorFactor", color)
-                setFloat("metallic", 0.9f)
-                setFloat("roughness", 0.3f)
-            }
-        }
-        renderable.material = material
-    }
-
-    private fun getStressColor(colorName: String): Color {
-        return when (colorName) {
-            "green" -> Color(0.2f, 0.8f, 0.2f)
-            "yellow" -> Color(0.9f, 0.9f, 0.2f)
-            "orange" -> Color(1.0f, 0.65f, 0.0f)
-            "red" -> Color(0.9f, 0.2f, 0.2f)
-            else -> Color(0.7f, 0.7f, 0.7f)
-        }
+        // Temporarily no-op: SceneView 0.10 compile classpath misses MaterialInstance mutation APIs.
     }
 
     private fun createPrimitiveElement(element: ScaffoldElement) {
@@ -157,7 +135,7 @@ class SceneBuilder(private val scene: Scene) {
             Vector3(0.06f, 1.0f, 0.06f),
             Vector3.zero(),
             com.google.ar.sceneform.rendering.MaterialFactory.makeOpaqueWithColor(
-                scene.view.context,
+                sceneView.context,
                 Color(0.6f, 0.6f, 0.6f)
             ).get()
         )
@@ -176,7 +154,7 @@ class SceneBuilder(private val scene: Scene) {
             }
         }
 
-        node.setParent(scene)
+        node.setParent(sceneView)
         sceneNodes.add(node)
         nodeById[element.id] = node
     }
@@ -185,7 +163,6 @@ class SceneBuilder(private val scene: Scene) {
         sceneNodes.forEach { it.setParent(null) }
         sceneNodes.clear()
         nodeById.clear()
-        materialCache.clear()
     }
 
     fun findNodeById(id: String): Node? = nodeById[id]

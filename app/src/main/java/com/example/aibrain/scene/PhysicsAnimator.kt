@@ -46,7 +46,7 @@ class PhysicsAnimator(
         }
 
         if (activeAnimations.isNotEmpty()) {
-            sceneView.scene.addOnUpdateListener(::onUpdate)
+            sceneView.addOnUpdateListener(::onUpdate)
         }
     }
 
@@ -93,7 +93,7 @@ class PhysicsAnimator(
         }
 
         if (activeAnimations.isEmpty()) {
-            sceneView.scene.removeOnUpdateListener(::onUpdate)
+            sceneView.removeOnUpdateListener(::onUpdate)
         }
     }
 
@@ -122,7 +122,7 @@ class PhysicsAnimator(
 
     fun stopAll() {
         activeAnimations.clear()
-        sceneView.scene.removeOnUpdateListener(::onUpdate)
+        sceneView.removeOnUpdateListener(::onUpdate)
         soundManager.stopAll()
     }
 
