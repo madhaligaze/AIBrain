@@ -107,7 +107,7 @@ class ARRuler(
     // Настройки
     private var snapToSurface = true
     private var showGrid = true
-    private var units = Units.METRIC
+    var units = Units.METRIC
 
     // Callbacks
     var onMeasurementUpdate: ((Float, String) -> Unit)? = null

@@ -391,12 +391,6 @@ class MainActivity : AppCompatActivity() {
             arManager.setupSession()
         }
 
-        sceneView.renderer?.apply {
-            isShadowsEnabled = true
-            isScreenSpaceAmbientOcclusionEnabled = true
-            isBloomEnabled = true
-            isMultisampleAntiAliasingEnabled = true
-        }
 
         if (mainAnchorNode == null) {
             mainAnchorNode = AnchorNode().also { anchor ->
@@ -405,7 +399,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        sceneView.scene.addOnUpdateListener {
+        sceneView.scene.addOnUpdateListener { _ ->
             val anchor = mainAnchorNode
             if (anchor != null && !lightingSetup) {
                 LightingSetup.setupLighting(sceneView, anchor)

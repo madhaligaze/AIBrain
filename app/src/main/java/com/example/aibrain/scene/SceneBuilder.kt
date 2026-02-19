@@ -9,7 +9,7 @@ import com.google.ar.sceneform.Scene
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.Color
-import com.google.ar.sceneform.rendering.Material
+import com.google.ar.sceneform.rendering.MaterialInstance
 import com.google.ar.sceneform.rendering.ModelRenderable
 import kotlin.math.sqrt
 
@@ -21,7 +21,7 @@ class SceneBuilder(private val scene: Scene) {
     private val sceneNodes = mutableListOf<Node>()
     private val nodeById = mutableMapOf<String, Node>()
     private val allElements = mutableListOf<ScaffoldElement>()
-    private val materialCache = mutableMapOf<String, Material>()
+    private val materialCache = mutableMapOf<String, MaterialInstance>()
 
     private val flangeOffsets = mapOf(
         "standard" to FlangeOffset(bottom = 0.0f, top = 2.0f, nodePositions = listOf(0.0f, 0.5f, 1.0f, 1.5f, 2.0f)),

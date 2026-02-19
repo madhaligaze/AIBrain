@@ -764,7 +764,19 @@
                 android:layout_width="0dp"
                 android:layout_height="36dp"
                 android:layout_weight="1"
+                android:layout_marginEnd="6dp"
                 android:text="⚙️"
+                android:textSize="16sp"
+                android:background="@drawable/btn_icon_cyan"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
+
+            <Button
+                android:id="@+id/btn_ruler_mode"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:text="📏"
                 android:textSize="16sp"
                 android:background="@drawable/btn_icon_cyan"
                 android:stateListAnimator="@null"

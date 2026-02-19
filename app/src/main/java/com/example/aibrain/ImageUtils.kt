@@ -8,6 +8,8 @@ import android.util.Base64
 import java.io.ByteArrayOutputStream
 
 object ImageUtils {
+    fun imageToBase64(image: Image): String = convertYuvToJpegBase64(image)
+
     fun convertYuvToJpegBase64(image: Image): String {
         val yBuffer = image.planes[0].buffer
         val uBuffer = image.planes[1].buffer
