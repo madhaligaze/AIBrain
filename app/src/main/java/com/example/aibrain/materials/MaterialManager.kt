@@ -80,6 +80,49 @@ class MaterialManager(private val context: Context) {
         elementType: String,
         newLoadRatio: Double
     ) {
-        renderable.material = getMaterial(elementType, newLoadRatio)
+        val material = getMaterial(elementType, newLoadRatio)
+
+        // SceneView/Sceneform forks differ in how materials are applied:
+        // - some expose ModelRenderable.material (Material)
+        // - some expose ModelRenderable.material (MaterialInstance)
+        // To keep the app buildable across these variants, apply via reflection.
+        try {
+            // Prefer a direct setter: setMaterial(...)
+            val setMaterial = renderable.javaClass.methods.firstOrNull {
+                it.name == "setMaterial" && it.parameterTypes.size == 1
+            }
+            if (setMaterial != null) {
+                val paramType = setMaterial.parameterTypes[0]
+                when {
+                    paramType.isInstance(material) -> {
+                        setMaterial.invoke(renderable, material)
+                        return
+                    }
+                    else -> {
+                        // Try to extract a "materialInstance"-like object from Material
+                        val instance = material.javaClass.methods.firstOrNull { m ->
+                            m.parameterTypes.isEmpty() &&
+                            (m.name == "getMaterialInstance" || m.name == "materialInstance" || m.name == "getInstance")
+                        }?.invoke(material)
+
+                        if (instance != null && paramType.isInstance(instance)) {
+                            setMaterial.invoke(renderable, instance)
+                            return
+                        }
+                    }
+                }
+            }
+
+            // Alternate: setMaterialInstance(...)
+            val setMaterialInstance = renderable.javaClass.methods.firstOrNull {
+                it.name == "setMaterialInstance" && it.parameterTypes.size == 1
+            }
+            if (setMaterialInstance != null && setMaterialInstance.parameterTypes[0].isInstance(material)) {
+                setMaterialInstance.invoke(renderable, material)
+                return
+            }
+        } catch (_: Throwable) {
+            // No-op - material update is best-effort.
+        }
     }
 }

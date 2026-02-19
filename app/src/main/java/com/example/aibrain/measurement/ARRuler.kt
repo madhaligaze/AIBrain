@@ -296,7 +296,7 @@ class ARRuler(
 
     private fun createPointMarker(anchor: Anchor, pose: Pose): AnchorNode {
         val anchorNode = AnchorNode(anchor)
-        anchorNode.setParent(sceneView)
+        anchorNode.setParent(sceneView.scene)
 
         scope.launch(Dispatchers.Main) {
             // Создание sphere для точки
@@ -379,7 +379,7 @@ class ARRuler(
         )
         lineNode.worldRotation = rotation
 
-        lineNode.setParent(sceneView)
+        lineNode.setParent(sceneView.scene)
         this.lineNode = lineNode
     }
 

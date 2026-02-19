@@ -34,7 +34,7 @@ class LayerGlbManager(
             val node = Node().apply {
                 this.renderable = renderable
                 this.isEnabled = true
-                setParent(sceneView)
+                setParent(sceneView.scene)
             }
             nodesByLayerId[layerId] = node
             node
