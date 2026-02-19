@@ -9,7 +9,7 @@ import com.example.aibrain.SoundType
 import com.example.aibrain.effects.ParticleSystem
 import com.google.ar.sceneform.Node
 import com.google.ar.sceneform.math.Vector3
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

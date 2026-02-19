@@ -1,6 +1,7 @@
 package com.example.aibrain.scene
 
 import android.content.Context
+import com.google.ar.sceneform.ArSceneView
 import com.google.ar.sceneform.Node
 import com.google.ar.sceneform.rendering.ModelRenderable
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +16,7 @@ import kotlin.coroutines.resumeWithException
 
 class LayerGlbManager(
     private val context: Context,
-    private val sceneView: io.github.sceneview.ar.ArSceneView,
+    private val sceneView: ArSceneView,
     private val baseUrl: String,
 ) {
     private val client = OkHttpClient()

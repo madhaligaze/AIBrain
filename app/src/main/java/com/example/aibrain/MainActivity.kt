@@ -43,7 +43,7 @@ import com.example.aibrain.scene.PhysicsAnimator
 import com.example.aibrain.scene.SceneBuilder
 import com.example.aibrain.scene.LightingSetup
 import com.example.aibrain.scene.LayerGlbManager
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.*
