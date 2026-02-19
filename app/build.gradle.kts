@@ -50,13 +50,6 @@ android {
     }
 }
 
-// Обходное решение для конфликтов разрешения зависимостей при использовании arsceneview
-configurations.all {
-    resolutionStrategy {
-        // Принудительно используем совместимую версию filament
-        force("com.google.ar.sceneform:core:1.17.1")
-    }
-}
 
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
@@ -70,9 +63,6 @@ dependencies {
 
     // ArSceneView — версия 0.10.0 совместима с Gradle 8.x (НЕ с 9.x)
     implementation("io.github.sceneview:arsceneview:0.10.0")
-    // Sceneform API (Node / AnchorNode / ShapeFactory)
-    implementation("com.google.ar.sceneform:core:1.17.1")
-
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
