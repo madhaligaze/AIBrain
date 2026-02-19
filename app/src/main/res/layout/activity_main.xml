@@ -22,6 +22,7 @@
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -81,6 +82,7 @@
                     android:layout_marginEnd="10dp"/>
 
                 <TextView
+                    android:id="@+id/tv_system_status"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="SYSTEM ONLINE"
@@ -168,6 +170,107 @@
         android:layout_gravity="top"
         android:layout_marginTop="60dp"
         android:background="@drawable/gradient_line_cyan" />
+
+    <!-- Quality Bar -->
+    <LinearLayout
+        android:id="@+id/quality_bar"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:layout_gravity="top"
+        android:layout_marginTop="64dp"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="QUALITY"
+            android:textColor="#7A00F5FF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:layout_marginEnd="10dp" />
+
+        <ProgressBar
+            android:id="@+id/pb_quality"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="8dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:indeterminate="false" />
+
+        <TextView
+            android:id="@+id/tv_quality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="#FF00F5FF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:layout_marginStart="10dp" />
+    </LinearLayout>
+
+
+    <!-- Mode Indicator -->
+    <LinearLayout
+        android:id="@+id/mode_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="102dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/mode_edit_bg">
+
+        <TextView
+            android:id="@+id/mode_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="✏️"
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/mode_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Режим редактирования"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Undo/Redo Panel -->
+    <LinearLayout
+        android:id="@+id/undo_redo_panel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="232dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_undo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:enabled="false"
+            android:text="↶"
+            android:textSize="20sp" />
+
+        <Button
+            android:id="@+id/btn_redo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:enabled="false"
+            android:text="↷"
+            android:textSize="20sp" />
+    </LinearLayout>
 
     <!--═════════════════════════════════════════════════════════════════════-->
     <!-- CORNER FRAME (Инженерные углы) -->
@@ -698,54 +801,25 @@
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
-        <!-- Variant Buttons -->
-        <LinearLayout
+        <TextView
+            android:id="@+id/tv_ai_critique"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="12dp">
+            android:text=""
+            android:textColor="#E6FFFFFF"
+            android:textSize="12sp"
+            android:layout_marginBottom="14dp"
+            android:lineSpacingExtra="2dp"
+            android:visibility="gone" />
 
-            <Button
-                android:id="@+id/btn_variant_1"
-                android:layout_width="0dp"
-                android:layout_height="72dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:text="ВАРИАНТ 1\n---%"
-                android:textColor="#FF00F5FF"
-                android:textSize="11sp"
-                android:fontFamily="monospace"
-                android:background="@drawable/btn_variant"
-                android:stateListAnimator="@null"
-                android:elevation="0dp" />
-
-            <Button
-                android:id="@+id/btn_variant_2"
-                android:layout_width="0dp"
-                android:layout_height="72dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:text="ВАРИАНТ 2\n---%"
-                android:textColor="#FF00F5FF"
-                android:textSize="11sp"
-                android:fontFamily="monospace"
-                android:background="@drawable/btn_variant"
-                android:stateListAnimator="@null"
-                android:elevation="0dp" />
-
-            <Button
-                android:id="@+id/btn_variant_3"
-                android:layout_width="0dp"
-                android:layout_height="72dp"
-                android:layout_weight="1"
-                android:text="ВАРИАНТ 3\n---%"
-                android:textColor="#FF00F5FF"
-                android:textSize="11sp"
-                android:fontFamily="monospace"
-                android:background="@drawable/btn_variant"
-                android:stateListAnimator="@null"
-                android:elevation="0dp" />
-        </LinearLayout>
+        <!-- Variants List -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_variants"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:overScrollMode="never"
+            android:scrollbars="none" />
 
         <!-- Action Buttons -->
         <LinearLayout
@@ -783,4 +857,67 @@
         </LinearLayout>
     </LinearLayout>
 
+
+
+    <!-- Eye of AI -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_eye_of_ai"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="232dp"
+        android:contentDescription="Показать глаз ИИ"
+        android:src="@drawable/ic_eye"
+        app:backgroundTint="#FF00BCD4"
+        app:tint="@android:color/white" />
+
+    <LinearLayout
+        android:id="@+id/voxel_legend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="80dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/legend_bg"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="👁️ Глаз ИИ"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:text="🔴 Препятствия"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:text="🔵 Существующие леса"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:text="🟢 Доступно для стройки"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🟡 Запретные зоны"
+            android:textColor="@android:color/white" />
+    </LinearLayout>
 </FrameLayout>

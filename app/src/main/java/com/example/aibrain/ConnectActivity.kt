@@ -1,0 +1,93 @@
+package com.example.aibrain
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class ConnectActivity : AppCompatActivity() {
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private lateinit var etUrl: EditText
+    private lateinit var tvStatus: TextView
+    private lateinit var btnContinue: Button
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_connect)
+
+        etUrl = findViewById(R.id.et_server_url)
+        tvStatus = findViewById(R.id.tv_connect_status)
+        val btnCheck: Button = findViewById(R.id.btn_check)
+        btnContinue = findViewById(R.id.btn_continue)
+        val btnSettings: Button = findViewById(R.id.btn_settings)
+
+        val prefs = getSharedPreferences(AppPrefs.PREFS_NAME, Context.MODE_PRIVATE)
+        etUrl.setText(prefs.getString(AppPrefs.KEY_SERVER_BASE_URL, AppPrefs.defaultBaseUrl()).orEmpty())
+
+        btnContinue.isEnabled = false
+        btnCheck.setOnClickListener { doHealthCheck() }
+        btnContinue.setOnClickListener {
+            val url = normalizeBaseUrl(etUrl.text.toString()) ?: return@setOnClickListener
+            prefs.edit().putString(AppPrefs.KEY_SERVER_BASE_URL, url).apply()
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+        }
+        btnSettings.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+
+        doHealthCheck()
+    }
+
+    private fun doHealthCheck() {
+        val url = normalizeBaseUrl(etUrl.text.toString())
+        if (url == null) {
+            setStatus(false, getString(R.string.connect_invalid_url))
+            btnContinue.isEnabled = false
+            return
+        }
+
+        setStatus(null, getString(R.string.connect_status_checking))
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                try {
+                    val r = NetworkClient.buildApi(url).healthCheck()
+                    r.isSuccessful && r.body()?.status == "ok"
+                } catch (_: Exception) {
+                    false
+                }
+            }
+            if (ok) {
+                setStatus(true, getString(R.string.connect_status_online))
+                btnContinue.isEnabled = true
+            } else {
+                setStatus(false, getString(R.string.connect_status_offline))
+                btnContinue.isEnabled = false
+            }
+        }
+    }
+
+    private fun setStatus(ok: Boolean?, msg: String) {
+        val color = when (ok) {
+            true -> R.color.cyan_primary
+            false -> R.color.orange_primary
+            null -> R.color.text_white_dim
+        }
+        tvStatus.setTextColor(ContextCompat.getColor(this, color))
+        tvStatus.text = msg
+    }
+
+    private fun normalizeBaseUrl(raw: String): String? {
+        val s = raw.trim()
+        if (s.isBlank()) return null
+        val withScheme = if (s.startsWith("http://") || s.startsWith("https://")) s else "http://$s"
+        return if (withScheme.endsWith("/")) withScheme else "$withScheme/"
+    }
+}

@@ -21,4 +21,14 @@
     <string name="hint_session_restored">✅ Сессия восстановлена</string>
     <string name="hint_modeling_retry">⏳ Попытка %1$d/%2$d, следующая через %3$dс...</string>
     <string name="unknown_error">неизвестная ошибка</string>
+    <string name="connect_title">AI Brain — подключение</string>
+    <string name="connect_url_hint">Например: 192.168.1.10:8000</string>
+    <string name="connect_help">Введите адрес сервера и нажмите «Проверить связь». Если всё в порядке — нажмите «Продолжить».</string>
+    <string name="connect_check">Проверить связь</string>
+    <string name="connect_continue">Продолжить</string>
+    <string name="connect_settings">Настройки</string>
+    <string name="connect_invalid_url">Некорректный адрес сервера</string>
+    <string name="connect_status_checking">Проверяем связь...</string>
+    <string name="connect_status_online">Сервер доступен</string>
+    <string name="connect_status_offline">Сервер недоступен</string>
 </resources>

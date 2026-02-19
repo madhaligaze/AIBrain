@@ -260,11 +260,34 @@ class ARRuler(
     }
 
     /**
+     * Получить сохраненные измерения (копия).
+     */
+    fun getSavedMeasurements(): List<Measurement> {
+        return measurements.toList()
+    }
+
+    /**
      * Экспорт всех измерений в JSON
      */
     fun exportMeasurements(): String {
-        // TODO: Implement JSON export
-        return ""
+        return try {
+            val gson = com.google.gson.Gson()
+            val payload = measurements.map { m ->
+                mapOf(
+                    "id" to m.id,
+                    "type" to m.type.name,
+                    "distance_m" to m.distance,
+                    "label" to m.label,
+                    "timestamp" to m.timestamp,
+                    "points" to m.points.map { p ->
+                        mapOf("x" to p.pose.tx(), "y" to p.pose.ty(), "z" to p.pose.tz())
+                    }
+                )
+            }
+            gson.toJson(payload)
+        } catch (_: Exception) {
+            ""
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#CC000000"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:padding="18dp"
+        android:layout_margin="18dp"
+        android:background="@drawable/panel_rounded">
+
+        <TextView
+            android:id="@+id/tv_tutorial_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tutorial"
+            android:textColor="@color/cyan_primary"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="10dp" />
+
+        <TextView
+            android:id="@+id/tv_tutorial_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="..."
+            android:textColor="@color/text_white_bright"
+            android:textSize="13sp"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="3dp"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_tutorial_skip"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="SKIP"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:backgroundTint="@color/cyan_alpha_20"
+                android:textColor="@color/cyan_primary" />
+
+            <Button
+                android:id="@+id/btn_tutorial_next"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:text="NEXT"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:backgroundTint="@color/orange_alpha_20"
+                android:textColor="@color/orange_primary" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>
