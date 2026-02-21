@@ -32,7 +32,7 @@
     <!--═════════════════════════════════════════════════════════════════════-->
     <!-- AR VIEWPORT -->
     <!--═════════════════════════════════════════════════════════════════════-->
-    <io.github.sceneview.ar.ArSceneView
+    <com.google.ar.sceneform.ArSceneView
         android:id="@+id/sceneView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
@@ -214,6 +214,60 @@
     </LinearLayout>
 
 
+    <!-- Readiness Bar -->
+    <LinearLayout
+        android:id="@+id/readiness_bar"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_gravity="top"
+        android:layout_marginTop="96dp"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="READINESS"
+            android:textColor="#7A00F5FF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:layout_marginEnd="10dp" />
+
+        <ProgressBar
+            android:id="@+id/pb_readiness"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="8dp"
+            android:layout_weight="1"
+            android:max="100"
+            android:progress="0"
+            android:indeterminate="false" />
+
+        <TextView
+            android:id="@+id/tv_readiness"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0%"
+            android:textColor="#FF00F5FF"
+            android:textSize="10sp"
+            android:fontFamily="monospace"
+            android:layout_marginStart="10dp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_readiness_detail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="128dp"
+        android:layout_marginEnd="20dp"
+        android:text="OBS 0% | VDIV 0/0 | VP 0/0"
+        android:textColor="#7700F5FF"
+        android:textSize="9sp"
+        android:fontFamily="monospace" />
+
     <!-- Mode Indicator -->
     <LinearLayout
         android:id="@+id/mode_indicator"
@@ -221,7 +275,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="102dp"
+        android:layout_marginTop="140dp"
         android:orientation="horizontal"
         android:gravity="center"
         android:background="@drawable/mode_edit_bg">
@@ -932,4 +986,10 @@
             android:text="🟡 Запретные зоны"
             android:textColor="@android:color/white" />
     </LinearLayout>
+
+    <!-- AR Ruler overlay (offline-ready) -->
+    <include
+        layout="@layout/ruler_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </FrameLayout>

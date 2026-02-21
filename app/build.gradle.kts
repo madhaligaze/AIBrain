@@ -58,20 +58,26 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
 
+    // Lifecycle (ViewModel + viewModelScope)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+
     // ARCore
     implementation("com.google.ar:core:1.41.0")
 
-    // ArSceneView — версия 0.10.0 совместима с Gradle 8.x (НЕ с 9.x)
-    implementation("io.github.sceneview:arsceneview:0.10.0")
+    // Sceneform (maintained continuation) - даёт com.google.ar.sceneform.* классы (Node/AnchorNode/Light/ArSceneView/FrameTime/Camera/...)
+    implementation("com.gorisse.thomas.sceneform:sceneform:1.23.0")
+    implementation("com.gorisse.thomas.sceneform:ux:1.23.0")
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.google.ar.sceneform:core:1.17.1")
     // OkHttp (timeouts/logging)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.3")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

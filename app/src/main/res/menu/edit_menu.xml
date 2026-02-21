@@ -8,4 +8,8 @@
         android:id="@+id/action_layers"
         android:title="Layers"
         android:showAsAction="never"/>
+    <item
+        android:id="@+id/action_reset_origin"
+        android:title="Reset origin"
+        android:showAsAction="never"/>
 </menu>

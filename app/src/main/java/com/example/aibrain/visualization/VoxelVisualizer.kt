@@ -1,14 +1,20 @@
 package com.example.aibrain.visualization
 
+import android.util.Log
 import com.google.ar.sceneform.Node
+import com.google.ar.sceneform.NodeParent
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.Material
 import com.google.ar.sceneform.rendering.MaterialFactory
 import com.google.ar.sceneform.rendering.ShapeFactory
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
+import com.example.aibrain.util.HeavyOps
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 import com.google.ar.sceneform.rendering.Color as SceneColor
 
 /**
@@ -16,27 +22,48 @@ import com.google.ar.sceneform.rendering.Color as SceneColor
  */
 class VoxelVisualizer(
     private val sceneView: ArSceneView,
-    private val coroutineScope: CoroutineScope
+    private val coroutineScope: CoroutineScope,
 ) {
     private val voxelNodes = mutableListOf<Node>()
     private var isVisible = false
     private val materials = mutableMapOf<String, Material>()
+    private var rootParent: NodeParent? = null
+
+    fun setRootParent(parent: NodeParent?) {
+        rootParent = parent
+        val p: NodeParent = parent ?: sceneView.scene
+        voxelNodes.forEach { it.setParent(p) }
+    }
 
     fun showVoxels(voxelData: List<VoxelData>) {
-        if (isVisible) {
-            hideVoxels()
-        }
+        if (isVisible) hideVoxels()
 
-        coroutineScope.launch {
-            if (materials.isEmpty()) {
-                loadMaterials()
+        coroutineScope.launch(Dispatchers.Main) {
+            HeavyOps.withPermit {
+                if (materials.isEmpty()) loadMaterials()
+
+                val source = if (voxelData.size > MAX_VOXELS) {
+                    val step = voxelData.size / MAX_VOXELS
+                    voxelData.filterIndexed { idx, _ -> idx % step == 0 }.take(MAX_VOXELS)
+                } else {
+                    voxelData
+                }
+
+                Log.d(TAG, "Rendering ${source.size} voxels (raw=${voxelData.size})")
+
+                var batchCount = 0
+                for (voxel in source) {
+                    if (!isActive) break
+                    createVoxelNode(voxel)
+                    batchCount++
+                    if (batchCount >= BATCH_SIZE) {
+                        batchCount = 0
+                        yield()
+                    }
+                }
+
+                isVisible = true
             }
-
-            voxelData.forEach { voxel ->
-                createVoxelNode(voxel)
-            }
-
-            isVisible = true
         }
     }
 
@@ -47,63 +74,44 @@ class VoxelVisualizer(
     }
 
     fun toggleVisibility(voxelData: List<VoxelData>? = null) {
-        if (isVisible) {
-            hideVoxels()
-        } else {
-            voxelData?.let { showVoxels(it) }
-        }
+        if (isVisible) hideVoxels() else voxelData?.let { showVoxels(it) }
     }
 
     private suspend fun loadMaterials() {
-        val context = sceneView.context
-
-        materials["obstacle"] = MaterialFactory.makeTransparentWithColor(
-            context,
-            SceneColor(1.0f, 0.2f, 0.2f, 0.7f)
-        ).await()
-
-        materials["structure"] = MaterialFactory.makeTransparentWithColor(
-            context,
-            SceneColor(0.2f, 0.5f, 1.0f, 0.5f)
-        ).await()
-
-        materials["available"] = MaterialFactory.makeTransparentWithColor(
-            context,
-            SceneColor(0.2f, 1.0f, 0.2f, 0.3f)
-        ).await()
-
-        materials["forbidden"] = MaterialFactory.makeTransparentWithColor(
-            context,
-            SceneColor(1.0f, 1.0f, 0.2f, 0.5f)
-        ).await()
-
-        materials["ground"] = MaterialFactory.makeTransparentWithColor(
-            context,
-            SceneColor(0.5f, 0.5f, 0.5f, 0.3f)
-        ).await()
+        val ctx = sceneView.context
+        materials["obstacle"] = MaterialFactory.makeTransparentWithColor(ctx, SceneColor(1.0f, 0.2f, 0.2f, 0.7f)).await()
+        materials["structure"] = MaterialFactory.makeTransparentWithColor(ctx, SceneColor(0.2f, 0.5f, 1.0f, 0.5f)).await()
+        materials["available"] = MaterialFactory.makeTransparentWithColor(ctx, SceneColor(0.2f, 1.0f, 0.2f, 0.3f)).await()
+        materials["forbidden"] = MaterialFactory.makeTransparentWithColor(ctx, SceneColor(1.0f, 1.0f, 0.2f, 0.5f)).await()
+        materials["ground"] = MaterialFactory.makeTransparentWithColor(ctx, SceneColor(0.5f, 0.5f, 0.5f, 0.3f)).await()
     }
 
     private fun createVoxelNode(voxel: VoxelData) {
-        val material = materials[voxel.type] ?: materials["available"] ?: return
+        val mat = materials[voxel.type] ?: materials["available"] ?: return
 
-        val renderable = if (voxel.type == "forbidden" && voxel.radius != null) {
-            ShapeFactory.makeCube(Vector3(voxel.radius * 2f, voxel.radius * 2f, voxel.radius * 2f), Vector3.zero(), material)
+        val size = if (voxel.type == "forbidden" && voxel.radius != null) {
+            voxel.radius * 2f
         } else {
-            val size = voxel.size ?: 0.25f
-            ShapeFactory.makeCube(Vector3(size, size, size), Vector3.zero(), material)
+            voxel.size ?: 0.25f
         }
+
+        val renderable = ShapeFactory.makeCube(Vector3(size, size, size), Vector3.zero(), mat)
+        val parent: NodeParent = rootParent ?: sceneView.scene
 
         val node = Node().apply {
             this.renderable = renderable
             worldPosition = Vector3(voxel.position[0], voxel.position[1], voxel.position[2])
+            setParent(parent)
         }
-
-        node.setParent(sceneView)
         voxelNodes.add(node)
     }
 
-    fun animatePulse() {
-        // TODO: Анимация вокселей при необходимости.
+    fun animatePulse() { /* TODO */ }
+
+    private companion object {
+        const val TAG = "VoxelVisualizer"
+        const val MAX_VOXELS = 500
+        const val BATCH_SIZE = 50
     }
 }
 
@@ -113,5 +121,5 @@ data class VoxelData(
     val color: String,
     val alpha: Float,
     val size: Float? = null,
-    val radius: Float? = null
+    val radius: Float? = null,
 )

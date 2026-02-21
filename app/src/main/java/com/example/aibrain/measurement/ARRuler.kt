@@ -9,7 +9,7 @@ import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.Node
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.*
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -198,6 +198,9 @@ class ARRuler(
         return calculateTotalDistance()
     }
 
+    /** Количество поставленных точек в текущем измерении */
+    fun getPointCount(): Int = currentPoints.size
+
     /**
      * Измерить высоту от пола до точки
      */
@@ -296,7 +299,7 @@ class ARRuler(
 
     private fun createPointMarker(anchor: Anchor, pose: Pose): AnchorNode {
         val anchorNode = AnchorNode(anchor)
-        anchorNode.setParent(sceneView)
+        anchorNode.setParent(sceneView.scene)
 
         scope.launch(Dispatchers.Main) {
             // Создание sphere для точки
@@ -379,7 +382,7 @@ class ARRuler(
         )
         lineNode.worldRotation = rotation
 
-        lineNode.setParent(sceneView)
+        lineNode.setParent(sceneView.scene)
         this.lineNode = lineNode
     }
 

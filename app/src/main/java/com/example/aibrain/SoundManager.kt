@@ -6,85 +6,83 @@ import android.media.MediaPlayer
 import android.media.SoundPool
 import android.util.Log
 
-/**
- * Менеджер звуковых эффектов с поддержкой 3D позиционирования.
- */
 class SoundManager(private val context: Context) {
 
-    private val soundPool: SoundPool
+    private val soundPool = SoundPool.Builder()
+        .setMaxStreams(10)
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_GAME)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+        )
+        .build()
+
     private val sounds = mutableMapOf<SoundType, Int>()
     private val mediaPlayers = mutableMapOf<SoundType, MediaPlayer>()
+    private val loadedSoundIds = mutableSetOf<Int>()
 
     init {
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_GAME)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
-
-        soundPool = SoundPool.Builder()
-            .setMaxStreams(10)
-            .setAudioAttributes(audioAttributes)
-            .build()
-
+        soundPool.setOnLoadCompleteListener { _, sampleId, status ->
+            if (status == 0) loadedSoundIds.add(sampleId)
+        }
         loadSounds()
     }
 
-    /**
-     * Загрузить все звуковые эффекты.
-     */
     private fun loadSounds() {
         try {
-            sounds[SoundType.COLLAPSE] = soundPool.load(context, R.raw.metal_crash, 1)
-            sounds[SoundType.PLACE] = soundPool.load(context, R.raw.metal_place, 1)
-            sounds[SoundType.REMOVE] = soundPool.load(context, R.raw.metal_remove, 1)
-            sounds[SoundType.STRESS] = soundPool.load(context, R.raw.structure_stress, 1)
-            sounds[SoundType.WHOOSH] = soundPool.load(context, R.raw.whoosh_build, 1)
-            sounds[SoundType.DUST_IMPACT] = soundPool.load(context, R.raw.dust_impact, 1)
+            loadIfValid(SoundType.COLLAPSE, R.raw.metal_crash)
+            loadIfValid(SoundType.PLACE, R.raw.metal_place)
+            loadIfValid(SoundType.REMOVE, R.raw.metal_remove)
+            loadIfValid(SoundType.STRESS, R.raw.structure_stress)
+            loadIfValid(SoundType.WHOOSH, R.raw.whoosh_build)
+            loadIfValid(SoundType.DUST_IMPACT, R.raw.dust_impact)
 
-            Log.d("SoundManager", "✅ Все звуки загружены")
+            if (sounds.isNotEmpty()) {
+                Log.d("SoundManager", "✅ Запрошена загрузка ${sounds.size} звуков")
+            } else {
+                Log.w("SoundManager", "⚠️ Нет валидных звуков для загрузки")
+            }
         } catch (e: Exception) {
             Log.e("SoundManager", "❌ Ошибка загрузки звуков: ${e.message}")
         }
     }
 
-    /**
-     * Воспроизвести звук с настраиваемой громкостью и высотой.
-     */
-    fun play(
-        type: SoundType,
-        volume: Float = 1.0f,
-        pitch: Float = 1.0f,
-        loop: Boolean = false
-    ): Int {
-        val soundId = sounds[type] ?: return -1
-        val loopMode = if (loop) -1 else 0
+    private fun loadIfValid(type: SoundType, resId: Int, minBytes: Long = 1024L) {
+        val afd = runCatching { context.resources.openRawResourceFd(resId) }.getOrNull()
+        if (afd == null) {
+            Log.w("SoundManager", "⚠️ raw resource missing for $type")
+            return
+        }
+        val len = afd.length
+        afd.close()
 
-        return soundPool.play(
-            soundId,
-            volume,
-            volume,
-            1,
-            loopMode,
-            pitch
-        )
+        if (len in 1 until minBytes) {
+            Log.w("SoundManager", "⚠️ raw resource too small ($len bytes) for $type, skipping")
+            return
+        }
+
+        val sampleId = soundPool.load(context, resId, 1)
+        if (sampleId == 0) {
+            Log.w("SoundManager", "⚠️ SoundPool rejected sample for $type")
+            return
+        }
+        sounds[type] = sampleId
     }
 
-    /**
-     * Воспроизвести звук с 3D позиционированием.
-     */
-    fun play3D(
-        type: SoundType,
-        distance: Float,
-        maxDistance: Float = 20.0f,
-        pitch: Float = 1.0f
-    ) {
+    fun play(type: SoundType, volume: Float = 1.0f, pitch: Float = 1.0f, loop: Boolean = false): Int {
+        val soundId = sounds[type] ?: return -1
+        if (!loadedSoundIds.contains(soundId)) return -1
+        val loopMode = if (loop) -1 else 0
+
+        return soundPool.play(soundId, volume, volume, 1, loopMode, pitch)
+    }
+
+    fun play3D(type: SoundType, distance: Float, maxDistance: Float = 20.0f, pitch: Float = 1.0f) {
         val volume = (1.0f - (distance / maxDistance).coerceIn(0f, 1f)).coerceAtLeast(0.1f)
         play(type, volume, pitch)
     }
 
-    /**
-     * Воспроизвести длинный звук (например, скрип).
-     */
     fun playLongSound(type: SoundType, loop: Boolean = false) {
         try {
             val resourceId = when (type) {
@@ -108,9 +106,7 @@ class SoundManager(private val context: Context) {
 
     fun stopLongSound(type: SoundType) {
         mediaPlayers[type]?.apply {
-            if (isPlaying) {
-                stop()
-            }
+            if (isPlaying) stop()
             release()
         }
         mediaPlayers.remove(type)

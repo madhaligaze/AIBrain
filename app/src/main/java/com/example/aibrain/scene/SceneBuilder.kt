@@ -8,7 +8,7 @@ import com.google.ar.sceneform.Node
 import com.google.ar.sceneform.math.Quaternion
 import com.google.ar.sceneform.math.Vector3
 import com.google.ar.sceneform.rendering.Color
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
 import kotlin.math.sqrt
 
 /**
@@ -51,7 +51,7 @@ class SceneBuilder(private val sceneView: ArSceneView) {
 
         applyStressColor(node, element.stress_color ?: colorFromLoadRatio(element.load_ratio ?: 0.0))
 
-        node.setParent(sceneView)
+        node.setParent(sceneView.scene)
         sceneNodes.add(node)
         nodeById[element.id] = node
     }
@@ -154,7 +154,7 @@ class SceneBuilder(private val sceneView: ArSceneView) {
             }
         }
 
-        node.setParent(sceneView)
+        node.setParent(sceneView.scene)
         sceneNodes.add(node)
         nodeById[element.id] = node
     }

@@ -6,7 +6,7 @@ import com.google.ar.sceneform.rendering.Color
 import com.google.ar.sceneform.rendering.Material
 import com.google.ar.sceneform.rendering.MaterialFactory
 import com.google.ar.sceneform.rendering.ShapeFactory
-import io.github.sceneview.ar.ArSceneView
+import com.google.ar.sceneform.ArSceneView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,7 +40,7 @@ class ParticleSystem(
 
         spark.renderable = sparkRenderable
         spark.worldPosition = origin
-        spark.setParent(sceneView)
+        spark.setParent(sceneView.scene)
 
         val velocity = Vector3(
             Random.nextFloat() * 2 - 1,
@@ -99,7 +99,7 @@ class ParticleSystem(
             0.05f,
             origin.z + Random.nextFloat() * 0.5f - 0.25f
         )
-        particle.setParent(sceneView)
+        particle.setParent(sceneView.scene)
 
         animateDust(particle)
     }
@@ -145,7 +145,7 @@ class ParticleSystem(
 
             ring.renderable = ringRenderable
             ring.worldPosition = Vector3(position.x, 0.01f, position.z)
-            ring.setParent(sceneView)
+            ring.setParent(sceneView.scene)
 
             animateShockwave(ring)
         }

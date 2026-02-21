@@ -2,13 +2,17 @@ package com.example.aibrain
 
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import android.os.Looper
 import android.util.Log
 import android.view.Menu
@@ -23,13 +27,17 @@ import android.widget.TextView
 import android.widget.Switch
 import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.ar.core.ArCoreApk
 import com.google.ar.core.Config
 import com.google.ar.core.Plane
 import com.google.ar.core.TrackingState
@@ -43,7 +51,10 @@ import com.example.aibrain.scene.PhysicsAnimator
 import com.example.aibrain.scene.SceneBuilder
 import com.example.aibrain.scene.LightingSetup
 import com.example.aibrain.scene.LayerGlbManager
-import io.github.sceneview.ar.ArSceneView
+import com.example.aibrain.network.NetworkStateController
+import com.google.gson.Gson
+import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.sceneform.ArSceneView
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.*
@@ -52,16 +63,22 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
+import java.io.File
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 import kotlin.math.min
 import com.example.aibrain.measurement.ARRuler
+import com.example.aibrain.offline.OfflineQueue
+import com.example.aibrain.diagnostics.CrashReporter
+import com.example.aibrain.util.HeavyOps
 import com.example.aibrain.measurement.MeasurementType
 import com.example.aibrain.measurement.Measurement
 import com.example.aibrain.visualization.VoxelData
 import com.example.aibrain.visualization.VoxelVisualizer
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * ⚡⚡⚡ ФИНАЛЬНАЯ ВЕРСИЯ MainActivity ⚡⚡⚡
@@ -78,6 +95,16 @@ import com.example.aibrain.visualization.VoxelVisualizer
  * ДАТА: 15.02.2026
  */
 class MainActivity : AppCompatActivity() {
+    private fun getDefaultVibrator(): Vibrator? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+            vm?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+    }
+
 
     // ══════════════════════════════════════════════════════════════════════
     // СОСТОЯНИЯ ПРИЛОЖЕНИЯ
@@ -100,17 +127,22 @@ class MainActivity : AppCompatActivity() {
         private const val RECONNECT_BASE_MS = 2_000L
         private const val RECONNECT_MAX_MS = 30_000L
         private const val STREAM_INTERVAL_MS = 1_000L
+        private const val AUTO_RELOAD_COOLDOWN_MS: Long = 12_000L
         private const val MIN_POINTS_FOR_MODEL = 2
         private const val MAX_POINTS = 20
         private const val PREFS_NAME = "app_settings"
         private const val PREF_SERVER_BASE_URL = "server_base_url"
         private const val KEY_SESSION_HISTORY = "session_history_json"
+        private const val PREF_CAMERA_SWAP_UV = "camera_swap_uv"
+        private const val DEPTH_SEND_EVERY = 5
+        private const val VOXEL_AUTO_REFRESH_MS = 30_000L
     }
 
     // ══════════════════════════════════════════════════════════════════════
     // UI ЭЛЕМЕНТЫ - ОСНОВНЫЕ
     // ══════════════════════════════════════════════════════════════════════
     private lateinit var sceneView: ArSceneView
+    private var arCoreInstallRequested: Boolean = false
     private lateinit var arManager: ARSessionManager
     private lateinit var tvAiHint: TextView
     private lateinit var tvFrameCounter: TextView
@@ -124,6 +156,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var connectionDot: View
     private lateinit var pbQuality: ProgressBar
     private lateinit var tvQuality: TextView
+    private lateinit var pbReadiness: ProgressBar
+    private lateinit var tvReadiness: TextView
+    private lateinit var tvReadinessDetail: TextView
     private lateinit var tvAiCritique: TextView
 
     // Основные кнопки
@@ -144,8 +179,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnExport: Button
     private lateinit var btnSettings: Button
     private lateinit var btnRulerMode: Button
+    private var btnSendReportNow: Button? = null
     private lateinit var fabEyeOfAI: FloatingActionButton
     private lateinit var voxelLegend: LinearLayout
+    private var tvFieldDiag: TextView? = null
 
     // Панели
     private lateinit var controlPanel: LinearLayout
@@ -220,6 +257,62 @@ class MainActivity : AppCompatActivity() {
     private var eyeOfAIActive = false
     private var layerGlbManager: LayerGlbManager? = null
     private var exportedLayers: List<UiLayer> = emptyList()
+    private val exportedLayerPaths: MutableMap<String, String> = mutableMapOf()
+    private var loadedExportRevId: String? = null
+    private var currentConnStatus: ConnectionStatus = ConnectionStatus.UNKNOWN
+    @Volatile private var streamPendingTick: Boolean = false
+    @Volatile private var streamImmediateNextTick: Boolean = false
+    private var streamIntervalMs: Long = STREAM_INTERVAL_MS
+    private var streamJpegQuality: Int = 72
+    private var streamPointCap: Int = 300
+    private var sendTimeEwmaMs: Double = 0.0
+    private var lastSendMs: Long = 0L
+    private var lastReadinessReady: Boolean? = null
+    private var lastReadinessScore: Double? = null
+    private var lastReadinessMetrics: ReadinessMetrics? = null
+    private var nextStreamAttemptAtMs: Long = 0L
+    private var exportPollJob: Job? = null
+    private var readinessPollJob: Job? = null
+    @Volatile private var exportPollInFlight: Boolean = false
+    @Volatile private var pendingExportRevId: String? = null
+    private val exportLoadMutex = Mutex()
+    private val lockExportMutex = Mutex()
+    private var exportPollFailures: Int = 0
+    private var readinessPollFailures: Int = 0
+    @Volatile private var autoReportInFlight: Boolean = false
+    private var streamErrorStreak: Int = 0
+    private var exportFailStreak: Int = 0
+    private var nextExportPollAtMs: Long = 0L
+    private var nextReadinessPollAtMs: Long = 0L
+    private var exportNotReady409: Boolean = false
+    private var lastAutoReloadAtMs: Long = 0L
+    private var pendingAutoReloadRev: String? = null
+    private var isUiActive: Boolean = false
+    private var pollingSessionId: String? = null
+    private var originAnchorNode: AnchorNode? = null
+    private var streamSendJob: Job? = null
+    private var isArSceneReady = false
+    private var isRulerReady = false
+    private var depthUnavailableStreak = 0
+    private var depthHintShown = false
+    private var arcoreHintShown = false
+    private var depthFrameCounter = 0
+    private var depthUnavailableWarned: Boolean = false
+    private var lastDepthWarningMs: Long = 0L
+    private var currentScanHints: List<String> = emptyList()
+    private var scanHintsVisible = false
+    private var autoVoxelRefreshJob: Job? = null
+    private val gson by lazy { Gson() }
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            startArIfReady()
+        } else {
+            showError("Нет доступа к камере. AR и рулетка недоступны.")
+        }
+    }
 
     // ══════════════════════════════════════════════════════════════════════
     // СОСТОЯНИЕ - AR RULER
@@ -233,31 +326,81 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var settingsPrefs: SharedPreferences
     private lateinit var api: ApiService
+    private lateinit var offlineQueue: OfflineQueue
+    private lateinit var crashReporter: CrashReporter
+    private lateinit var netState: NetworkStateController
+    @Volatile private var offlineFlushInFlight: Boolean = false
 
     // ══════════════════════════════════════════════════════════════════════
     // LIFECYCLE
     // ══════════════════════════════════════════════════════════════════════
 
+
+
+    private fun applySystemBars() {
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = ContextCompat.getColor(this, R.color.navigation_bar)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applySystemBars()
         setContentView(R.layout.activity_main)
 
         settingsPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         rebuildApiClient()
+        offlineQueue = OfflineQueue(this)
+        crashReporter = CrashReporter(this)
+        netState = NetworkStateController()
+        if (crashReporter.readCrashMarkerSnippet() != null) {
+            maybeAutoReport("crash_marker")
+        }
+
+        val prevHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            runCatching { crashReporter.recordError("UNCAUGHT:${t.name}", e, fatal = true) }
+            runCatching {
+                val body = buildString {
+                    append(System.currentTimeMillis())
+                    append("\n")
+                    append(e.javaClass.name)
+                    append(": ")
+                    append(e.message ?: "")
+                    append("\n")
+                    append(android.util.Log.getStackTraceString(e))
+                }
+                File(filesDir, "crash_marker.txt").writeText(body.take(8192))
+            }
+            prevHandler?.uncaughtException(t, e)
+        }
 
         initViews()
-        setupARScene()
         setupClickListeners()
-        initializeRuler()
+
+        // Camera permission is required for ARCore / ruler.
+        if (hasCameraPermission()) {
+            startArIfReady()
+        } else {
+            requestCameraPermission()
+        }
         sceneBuilder = SceneBuilder(sceneView)
-        physicsAnimator = PhysicsAnimator(sceneView, sceneBuilder, this)
+        // physicsAnimator is initialized below, after soundManager is created
 
         showLoadingDialog("Загрузка моделей...")
         lifecycleScope.launch {
             val result = ModelAssets.loadAll(this@MainActivity)
             result.onSuccess {
                 hideLoadingDialog()
-                Log.d("ModelAssets", "✅ Все модели загружены успешно")
+                if (ModelAssets.isReady()) {
+                    Log.d("ModelAssets", "✅ Все модели загружены успешно")
+                } else {
+                    Log.w("ModelAssets", "⚠️ 3D модели не найдены в assets/. Используется упрощенный режим.")
+                    showError("3D модели не найдены. Используется упрощенный режим.")
+                }
             }
             result.onFailure { error ->
                 hideLoadingDialog()
@@ -268,6 +411,8 @@ class MainActivity : AppCompatActivity() {
         viewModel = StructureViewModel(api)
         soundManager = SoundManager(this)
         voxelVisualizer = VoxelVisualizer(sceneView, lifecycleScope)
+        // Pass shared soundManager to avoid double SoundPool instance
+        physicsAnimator = PhysicsAnimator(sceneView, sceneBuilder, this, soundManager)
 
         lifecycleScope.launch {
             viewModel.structureState.collect { state ->
@@ -329,6 +474,9 @@ class MainActivity : AppCompatActivity() {
         connectionDot = findViewById(R.id.connection_dot)
         pbQuality = findViewById(R.id.pb_quality)
         tvQuality = findViewById(R.id.tv_quality)
+        pbReadiness = findViewById(R.id.pb_readiness)
+        tvReadiness = findViewById(R.id.tv_readiness)
+        tvReadinessDetail = findViewById(R.id.tv_readiness_detail)
         tvAiCritique = findViewById(R.id.tv_ai_critique)
 
         // Основные кнопки
@@ -351,6 +499,10 @@ class MainActivity : AppCompatActivity() {
         btnExport = findViewById(R.id.btn_export)
         btnSettings = findViewById(R.id.btn_settings)
         btnRulerMode = findViewById(R.id.btn_ruler_mode)
+        val reportBtnId = resources.getIdentifier("btn_send_report_now", "id", packageName)
+        if (reportBtnId != 0) btnSendReportNow = findViewById(reportBtnId)
+        val fieldDiagId = resources.getIdentifier("tv_field_diag", "id", packageName)
+        if (fieldDiagId != 0) tvFieldDiag = findViewById(fieldDiagId)
         fabEyeOfAI = findViewById(R.id.fab_eye_of_ai)
         voxelLegend = findViewById(R.id.voxel_legend)
 
@@ -378,28 +530,45 @@ class MainActivity : AppCompatActivity() {
         tvAccuracy = findViewById(R.id.tv_accuracy)
     }
 
-    private fun setupARScene() {
-        sceneView.configureSession { _, config ->
-            config.focusMode = Config.FocusMode.AUTO
-            config.lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
-            config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
-        }
 
+    private fun startArIfReady() {
+        if (!::sceneView.isInitialized) return
+        if (!hasCameraPermission()) return
+        if (!isArSceneReady) {
+            setupARScene()
+            isArSceneReady = true
+        }
+        if (!isRulerReady) {
+            initializeRuler()
+            isRulerReady = true
+        }
+    }
+
+    private fun setupARScene() {
+        // Конфигурацию ARCore Session делаем через ARSessionManager (без SceneView-специфичных API).
 
         if (!::arManager.isInitialized) {
             arManager = ARSessionManager(this, sceneView)
-            arManager.setupSession()
+        }
+        val sessionOk = arManager.setupSession()
+        if (!sessionOk) {
+            showError("ARCore сессия не запустилась. Убедитесь что ARCore обновлён и камера доступна.")
+            return
+        }
+        if (arManager.depthMode == Config.DepthMode.DISABLED && !depthHintShown) {
+            depthHintShown = true
+            showHint("ℹ️ Устройство не поддерживает Depth API — depth-данные недоступны")
         }
 
 
         if (mainAnchorNode == null) {
             mainAnchorNode = AnchorNode().also { anchor ->
-                anchor.setParent(sceneView)
+                anchor.setParent(sceneView.scene)
                 anchorNodes.add(anchor)
             }
         }
 
-        sceneView.addOnUpdateListener { _ ->
+        sceneView.scene.addOnUpdateListener { _: com.google.ar.sceneform.FrameTime ->
             val anchor = mainAnchorNode
             if (anchor != null && !lightingSetup) {
                 LightingSetup.setupLighting(sceneView, anchor)
@@ -420,6 +589,15 @@ class MainActivity : AppCompatActivity() {
         // Основные действия
         btnStart.setOnClickListener { onStartClicked() }
         btnAddPoint.setOnClickListener { onAddPointClicked() }
+        btnAddPoint.setOnLongClickListener {
+            if (originAnchorNode == null) {
+                showHint("ℹ️ Origin ещё не задан. Долгое нажатие работает после установки первой опоры")
+                true
+            } else {
+                confirmResetOrigin()
+                true
+            }
+        }
         btnScan.setOnClickListener { onScanClicked() }
         btn3DModel.setOnClickListener { on3DModelClicked() }
         btnAnalyze.setOnClickListener { onAnalyzeClicked() }
@@ -432,6 +610,7 @@ class MainActivity : AppCompatActivity() {
         btnSaveSession.setOnClickListener { onSaveSessionClicked() }
         btnExport.setOnClickListener { onExportClicked() }
         btnSettings.setOnClickListener { onSettingsClicked() }
+        btnSendReportNow?.setOnClickListener { onSendReportNowClicked() }
         fabEyeOfAI.setOnClickListener { toggleEyeOfAI() }
         btnRulerMode.setOnClickListener { toggleRulerMode() }
 
@@ -471,8 +650,12 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         stopStreaming()
         stopHealthLoop()
+        stopAutoVoxelRefresh()
+        voxelPollJob?.cancel()
+        voxelPollJob = null
         scope.cancel()
         clearARAnchors()
+        layerGlbManager?.clearNodes()
 
         if (::arRuler.isInitialized) {
             arRuler.clearAll()
@@ -504,6 +687,7 @@ class MainActivity : AppCompatActivity() {
             selectedVariantIndex = 0
             show3DPreview = false
             clearARAnchors()
+            layerGlbManager?.clearNodes()
             sceneBuilder.clearScene()
             transitionTo(AppState.IDLE)
         }
@@ -534,7 +718,7 @@ class MainActivity : AppCompatActivity() {
         scope.launch {
             repeat(5) {
                 if (!isStreaming) return@launch
-                sendFrame()
+                sendFrameWith(80, 500)
                 delay(300)
             }
             showHint("✓ Сканирование завершено. Качество: ${lastQualityScore.toInt()}%")
@@ -571,7 +755,9 @@ class MainActivity : AppCompatActivity() {
                     showHint("🧠 Запуск анализа структуры...")
                     stopStreaming()
                     transitionTo(AppState.MODELING)
-                    scope.launch { doRequestModeling() }
+                    val mJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
+                    val mList = runCatching { if (::arRuler.isInitialized) arRuler.getSavedMeasurements().map { m -> MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp) } else emptyList<MeasurementConstraint>() }.getOrDefault(emptyList())
+                    scope.launch { doRequestModeling(mJson, mList) }
                 }
                 .setNegativeButton("Отмена", null)
                 .show()
@@ -582,7 +768,9 @@ class MainActivity : AppCompatActivity() {
         stopStreaming()
         transitionTo(AppState.MODELING)
 
-        scope.launch { doRequestModeling() }
+        val measurementsJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
+        val measurementConstraints = runCatching { if (::arRuler.isInitialized) arRuler.getSavedMeasurements().map { m -> MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp) } else emptyList<MeasurementConstraint>() }.getOrDefault(emptyList())
+        scope.launch { doRequestModeling(measurementsJson, measurementConstraints) }
     }
 
     private fun onVariantSelected(index: Int) {
@@ -640,19 +828,121 @@ class MainActivity : AppCompatActivity() {
             )
             delay(300)
             currentSessionId?.let { sid ->
-                runCatching {
-                    val resp = api.exportLatest(sid)
-                    if (resp.isSuccessful && resp.body() != null) {
-                        val rev = resp.body()!!.revision_id ?: resp.body()!!.rev_id.orEmpty()
-                        if (rev.isNotBlank()) {
-                            lastRevisionId = rev
-                            showHint("✓ Экспорт сформирован: ${rev.take(8)}")
-                        }
-                    }
-                }
+                doLockSession(sid, option)
+                // Auto-refresh export layers after locking (if origin is set).
+                loadExportLayersInternal(sid, showDialog = false, showOkHint = false)
             }
             delay(450)
             showResultsBottomSheet()
+        }
+    }
+
+
+    private suspend fun doLockSession(sid: String, option: ScaffoldOption) {
+        lockExportMutex.withLock {
+        val measurementsJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
+        val measurementConstraints = runCatching {
+            if (::arRuler.isInitialized) {
+                arRuler.getSavedMeasurements().map { m ->
+                    MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp)
+                }
+            } else emptyList()
+        }.getOrDefault(emptyList())
+
+        val lockPayload = LockPayload(
+            session_id = sid,
+            selected_variant = option.variant_name,
+            measurements_json = measurementsJson.ifBlank { null },
+            manual_measurements = measurementConstraints
+        )
+        try {
+            val resp = api.lockSession(lockPayload)
+            if (resp.isSuccessful && resp.body() != null) {
+                lastRevisionId = resp.body()!!.rev_id
+                return
+            }
+            offlineQueue.enqueueLock(sid, getCurrentServerUrl())
+            crashReporter.recordError("lockSession", IllegalStateException("HTTP ${resp.code()}"))
+        } catch (e: Exception) {
+            offlineQueue.enqueueLock(sid, getCurrentServerUrl())
+            crashReporter.recordError("lockSession", e)
+        }
+
+        runCatching { api.exportLatest(sid) }.onSuccess { exp ->
+            val rev = exp.body()?.revision_id ?: exp.body()?.rev_id.orEmpty()
+            if (rev.isNotBlank()) lastRevisionId = rev
+        }
+        }
+    }
+
+    private suspend fun loadExportLayersInternal(
+        sid: String,
+        showDialog: Boolean,
+        showOkHint: Boolean
+    ) {
+        exportLoadMutex.withLock {
+            try {
+                val response = lockExportMutex.withLock { api.exportLatest(sid) }
+                if (response.code() == 409) {
+                    exportNotReady409 = true
+                    // Quiet: export not ready yet.
+                    return
+                }
+                if (!response.isSuccessful || response.body() == null) {
+                    throw IllegalStateException("HTTP ${response.code()}")
+                }
+                exportNotReady409 = false
+                val bundle = response.body()!!
+                val rev = bundle.revision_id ?: bundle.rev_id.orEmpty()
+                if (rev.isNotBlank() && loadedExportRevId != null && loadedExportRevId != rev) {
+                    layerGlbManager?.clearAll()
+                }
+                if (rev.isNotBlank()) {
+                    loadedExportRevId = rev
+                    crashReporter.setLastExportRev(rev)
+                    updateFieldDiag()
+                }
+
+                // Revision-aware caching for layers
+                if (layerGlbManager == null) {
+                    layerGlbManager = LayerGlbManager(this@MainActivity, sceneView, getCurrentServerUrl())
+                }
+                layerGlbManager?.setCurrentRevision(rev)
+
+                val layers = bundle.ui?.layers.orEmpty()
+                exportedLayers = layers
+                exportedLayerPaths.clear()
+                for (layer in layers) {
+                    val path = layer.file?.glb?.path ?: layer.file?.path
+                    if (!path.isNullOrBlank()) exportedLayerPaths[layer.id] = path
+                }
+
+                if (originAnchorNode == null) {
+                    if (showDialog) showLayersDialog()
+                    showHint("⚠️ Сначала поставь origin anchor (кнопка опоры), потом загружай слои")
+                    return
+                }
+
+                layerGlbManager?.setLayersRoot(originAnchorNode)
+
+                for (layer in layers) {
+                    val path = exportedLayerPaths[layer.id]
+                    if (path.isNullOrBlank()) continue
+                    val key = "layer_visible_${layer.id}"
+                    val def = layer.default_on ?: true
+                    val wantVisible = settingsPrefs.getBoolean(key, def)
+                    if (wantVisible) {
+                        runCatching { layerGlbManager?.loadOrShowLayer(layer.id, path) }
+                    } else {
+                        layerGlbManager?.setVisible(layer.id, false)
+                    }
+                }
+
+                if (showDialog) showLayersDialog()
+                if (showOkHint) showHint("✓ Слои обновлены")
+            } catch (e: Exception) {
+                if (showOkHint) showHint("❌ Ошибка загрузки слоёв: ${e.message}")
+            }
         }
     }
 
@@ -666,7 +956,7 @@ class MainActivity : AppCompatActivity() {
         showHint("💾 Формирование export/latest...")
         scope.launch {
             try {
-                val resp = api.exportLatest(sid)
+                val resp = lockExportMutex.withLock { api.exportLatest(sid) }
                 if (!resp.isSuccessful || resp.body() == null) {
                     showError("export/latest: HTTP ${resp.code()}")
                     return@launch
@@ -690,29 +980,7 @@ class MainActivity : AppCompatActivity() {
 
         showHint("📦 Загрузка export/latest...")
         scope.launch {
-            try {
-                val response = api.exportLatest(sid)
-                if (!response.isSuccessful || response.body() == null) {
-                    throw IllegalStateException("HTTP ${response.code()}")
-                }
-                val bundle = response.body()!!
-                val layers = bundle.ui?.layers.orEmpty()
-                exportedLayers = layers
-                if (layerGlbManager == null) {
-                    layerGlbManager = LayerGlbManager(this@MainActivity, sceneView, getCurrentServerUrl())
-                }
-
-                for (layer in layers) {
-                    val path = layer.file?.glb?.path ?: layer.file?.path
-                    if (path.isNullOrBlank()) continue
-                    runCatching { layerGlbManager?.loadLayer(layer.id, path) }
-                }
-
-                showLayersDialog()
-                showHint("✓ Слои загружены")
-            } catch (e: Exception) {
-                showHint("❌ Ошибка загрузки слоёв: ${e.message}")
-            }
+            loadExportLayersInternal(sid, showDialog = true, showOkHint = true)
         }
     }
 
@@ -743,13 +1011,28 @@ class MainActivity : AppCompatActivity() {
                 isChecked = settingsPrefs.getBoolean(key, def)
                 setOnCheckedChangeListener { _, checked ->
                     settingsPrefs.edit().putBoolean(key, checked).apply()
-                    layerGlbManager?.setVisible(layer.id, checked)
+                    if (checked) {
+                        val path = exportedLayerPaths[layer.id]
+                        if (path.isNullOrBlank()) {
+                            showHint("⚠️ Нет пути для слоя ${layer.id}")
+                        } else {
+                            scope.launch { runCatching { layerGlbManager?.loadOrShowLayer(layer.id, path) } }
+                        }
+                    } else {
+                        layerGlbManager?.setVisible(layer.id, false)
+                    }
                 }
             }
             row.addView(label)
             row.addView(sw)
             container.addView(row)
             layerGlbManager?.setVisible(layer.id, sw.isChecked)
+            if (sw.isChecked) {
+                val path = exportedLayerPaths[layer.id]
+                if (!path.isNullOrBlank()) {
+                    scope.launch { runCatching { layerGlbManager?.loadOrShowLayer(layer.id, path) } }
+                }
+            }
         }
 
         AlertDialog.Builder(this)
@@ -761,6 +1044,42 @@ class MainActivity : AppCompatActivity() {
 
     private fun onSettingsClicked() {
         startActivity(android.content.Intent(this, SettingsActivity::class.java))
+    }
+
+    private fun onSendReportNowClicked() {
+        val sid = currentSessionId
+        scope.launch {
+            val baseUrl = getCurrentServerUrl()
+            val status = offlineQueue.getStatus(sid ?: "", baseUrl)
+            val queued = mapOf(
+                "anchors_queued" to status.anchorsQueued,
+                "lock_queued" to status.lockQueued,
+                "baseurl_mismatch" to status.mismatchedBaseUrlItems,
+                "base_url" to baseUrl,
+                "conn_status" to currentConnStatus.name,
+            )
+            val ok = crashReporter.sendNow(api, sid, buildClientStats(), queued)
+            withContext(Dispatchers.Main) {
+                if (ok) showHint("✅ Report sent") else showHint("⚠️ Report not sent")
+                updateFieldDiag()
+            }
+        }
+    }
+
+    private fun updateFieldDiag() {
+        val v = tvFieldDiag ?: return
+        val sid = currentSessionId
+        if (sid.isNullOrBlank()) {
+            v.text = "Q A0 L0 | REPORT -"
+            return
+        }
+        val baseUrl = getCurrentServerUrl()
+        val st = offlineQueue.getStatus(sid, baseUrl)
+        val lastSent = crashReporter.getLastSentMs()
+        val report = if (lastSent <= 0L) "-" else "${(System.currentTimeMillis() - lastSent) / 1000L}s"
+        val exportState = if (exportNotReady409) "EXPORT 409" else "EXPORT OK"
+        val mismatch = if (st.mismatchedBaseUrlItems > 0) " | BASEURL!" else ""
+        v.text = "Q A${st.anchorsQueued} L${st.lockQueued} | ${exportState} | R ${report}${mismatch}"
     }
 
     private fun rebuildApiClient() {
@@ -817,6 +1136,7 @@ class MainActivity : AppCompatActivity() {
     // ══════════════════════════════════════════════════════════════════════
 
     private fun updateConnectionUi(status: ConnectionStatus, detail: String? = null) {
+        currentConnStatus = status
         lastConnectionDetail = detail
 
         val (dotRes, label) = when (status) {
@@ -835,25 +1155,32 @@ class MainActivity : AppCompatActivity() {
         healthJob?.cancel()
         healthJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
+                val base = getCurrentServerUrl().trimEnd('/')
+                netState.waitIfNeeded("health")
                 val ok = try {
                     val r = api.healthCheck()
                     r.isSuccessful
                 } catch (_: Exception) {
                     false
                 }
-
+                netState.reportResult(
+                    tag = "health",
+                    success = ok,
+                    baseMs = 15_000L,
+                    maxMs = 90_000L,
+                    errorDetail = if (ok) null else "health_failed"
+                )
                 withContext(Dispatchers.Main) {
-                    val base = getCurrentServerUrl().trimEnd('/')
-                    if (ok) {
-                        viewModel.setConnectionState(ConnectionStatus.ONLINE, base)
-                    } else {
-                        // Если сейчас идет стрим - показываем деградацию, иначе OFFLINE
-                        val st = if (isStreaming) ConnectionStatus.RECONNECTING else ConnectionStatus.OFFLINE
-                        viewModel.setConnectionState(st, base)
+                    val st = netState.getStatus()
+                    currentConnStatus = st
+                    viewModel.setConnectionState(st, base)
+                }
+                val sid = currentSessionId
+                if (sid != null && netState.getStatus() == ConnectionStatus.ONLINE) {
+                    scope.launch {
+                        maybeFlushOfflineAndTelemetry(sid, base)
                     }
                 }
-
-                delay(15_000L)
             }
         }
     }
@@ -863,8 +1190,85 @@ class MainActivity : AppCompatActivity() {
         healthJob = null
     }
 
-    private suspend fun syncAnchorsToServer() {
-        val sid = currentSessionId ?: return
+    private suspend fun maybeFlushOfflineAndTelemetry(sessionId: String, baseUrl: String) {
+        // Shared backoff gate for flush operations.
+        netState.waitIfNeeded("flush")
+
+        // Quick check: if there's nothing to flush and no crash marker - skip.
+        val q = runCatching { offlineQueue.getStatus(sessionId, baseUrl) }.getOrNull()
+        val hasQueue = (q != null && (q.anchorsQueued > 0 || q.lockQueued > 0))
+        val hasCrashMarker = (crashReporter.readCrashMarkerSnippet() != null)
+        if (!hasQueue && !hasCrashMarker) {
+            netState.reportResult(tag = "flush", success = true, baseMs = 20_000L, maxMs = 60_000L)
+            return
+        }
+
+        flushOfflineAndTelemetry(sessionId, baseUrl)
+    }
+
+    private suspend fun flushOfflineAndTelemetry(sessionId: String, baseUrl: String) {
+        if (offlineFlushInFlight) return
+        offlineFlushInFlight = true
+        try {
+            // Avoid rare races: flush uses the same mutex as user Lock/Export actions.
+            lockExportMutex.withLock {
+                offlineQueue.flushForSession(api, sessionId, baseUrl)
+            }
+            crashReporter.flush(
+                api = api,
+                sessionId = sessionId,
+                connectionStatus = currentConnStatus.name,
+                serverBaseUrl = baseUrl,
+                lastExportRev = lastRevisionId,
+                loadedExportRev = loadedExportRevId,
+                lastRevisionId = lastRevisionId,
+                clientStats = buildClientStats()
+            )
+            netState.reportResult(tag = "flush", success = true, baseMs = 20_000L, maxMs = 60_000L)
+        } catch (e: Exception) {
+            crashReporter.recordException("flushOfflineAndTelemetry", e)
+            netState.reportResult(tag = "flush", success = false, baseMs = 5_000L, maxMs = 90_000L, errorDetail = e.message)
+        } finally {
+            offlineFlushInFlight = false
+        }
+    }
+
+    private fun buildClientStats(): Map<String, Any> {
+        val map = HashMap<String, Any>()
+        map["state"] = appState.name
+        map["frame_counter"] = frameCount
+        map["is_streaming"] = isStreaming
+        map["anchors_local"] = userMarkers.size
+        map["last_revision_id"] = (lastRevisionId ?: "")
+        return map
+    }
+
+    private fun buildQueuedActionsForReport(): Map<String, Any> {
+        val sid = currentSessionId
+        if (sid.isNullOrBlank()) return emptyMap()
+        val baseUrl = getCurrentServerUrl()
+        val queued = HashMap<String, Any>()
+        queued["offline_queue"] = offlineQueue.getStatus(sid, baseUrl)
+        queued["base_url"] = baseUrl
+        queued["conn_status"] = currentConnStatus.name
+        return queued
+    }
+
+    private fun maybeAutoReport(trigger: String) {
+        if (autoReportInFlight) return
+        autoReportInFlight = true
+        val sid = currentSessionId
+        scope.launch(Dispatchers.IO) {
+            try {
+                crashReporter.maybeAutoSend(api, sid, buildClientStats(), buildQueuedActionsForReport(), trigger)
+            } finally {
+                autoReportInFlight = false
+            }
+        }
+    }
+
+    private suspend fun syncAnchorsToServer(allowEmpty: Boolean = false): Boolean {
+        val sid = currentSessionId ?: return false
         val anchors = userMarkers.map { marker ->
             AnchorPointRequest(
                 id = marker.id,
@@ -873,11 +1277,21 @@ class MainActivity : AppCompatActivity() {
                 confidence = 1.0f
             )
         }
-        if (anchors.isEmpty()) return
-
-        val resp = api.postAnchors(AnchorPayload(session_id = sid, anchors = anchors))
-        if (!resp.isSuccessful) {
-            throw IllegalStateException("/session/anchors HTTP " + resp.code())
+        if (anchors.isEmpty() && !allowEmpty) return true
+        val payload = AnchorPayload(session_id = sid, anchors = anchors)
+        return try {
+            val resp = api.postAnchors(payload)
+            if (resp.isSuccessful) {
+                true
+            } else {
+                offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
+                crashReporter.recordError("postAnchors", IllegalStateException("HTTP ${resp.code()}"))
+                false
+            }
+        } catch (e: Exception) {
+            offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
+            crashReporter.recordError("postAnchors", e)
+            false
         }
     }
 
@@ -911,7 +1325,7 @@ class MainActivity : AppCompatActivity() {
         if (!rulerMode) return
 
         try {
-            val frame = sceneView.arSession?.update() ?: return
+            val frame = sceneView.arFrame ?: return
 
             val hits = frame.hitTest(
                 sceneView.width / 2f,
@@ -925,7 +1339,7 @@ class MainActivity : AppCompatActivity() {
             if (success) {
                 vibrate(30)
 
-                val pointCount = arRuler.getCurrentDistance()
+                val pointCount = arRuler.getPointCount()
                 tvRulerPointCount.text = "$pointCount"
 
                 if (pointCount >= 2) {
@@ -1024,7 +1438,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getTrackingAccuracy(): Float {
         try {
-            val frame = sceneView.arSession?.update() ?: return 0.5f
+            val frame = sceneView.arFrame ?: return 0.5f
             val camera = frame.camera
 
             return when (camera.trackingState) {
@@ -1178,9 +1592,63 @@ class MainActivity : AppCompatActivity() {
         val clamped = v.coerceIn(0.0, 100.0)
         pbQuality.progress = clamped.toInt()
         tvQuality.text = "${clamped.toInt()}%"
-        if (clamped >= 1.0 && clamped < qualityMinForAnalyze.toDouble()) {
-            showHint("⚠️ Качество низкое: ${clamped.toInt()}%. Нужно >= $qualityMinForAnalyze% для анализа.")
+        val colorRes = when {
+            clamped >= qualityMinForAnalyze -> android.R.color.holo_green_light
+            clamped >= qualityMinForAnalyze * 0.6 -> android.R.color.holo_orange_light
+            else -> android.R.color.holo_red_light
         }
+        pbQuality.progressTintList = android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, colorRes))
+        if (!scanHintsVisible && clamped >= 1.0 && clamped < qualityMinForAnalyze.toDouble()) {
+            showHint("⚠️ Качество: ${clamped.toInt()}%. Нужно >= $qualityMinForAnalyze%")
+        }
+    }
+
+    private fun updateReadinessUI(
+        ready: Boolean?,
+        score: Double?,
+        metrics: ReadinessMetrics?
+    ) {
+        if (originAnchorNode == null) {
+            pbReadiness.progress = 0
+            tvReadiness.text = "0%"
+            tvReadinessDetail.text = "Place origin anchor"
+            pbReadiness.progressTintList = android.content.res.ColorStateList.valueOf(
+                ContextCompat.getColor(this, android.R.color.holo_orange_light)
+            )
+            return
+        }
+
+        val s0 = (score ?: 0.0).coerceIn(0.0, 1.0)
+        pbReadiness.progress = (s0 * 100.0).toInt()
+        tvReadiness.text = "${(s0 * 100.0).toInt()}%"
+
+        val obsPct = ((metrics?.observed_ratio ?: 0.0) * 100.0).toInt()
+        val vdiv = metrics?.view_diversity ?: 0
+        val minViews = metrics?.min_views_per_anchor ?: 0
+        val vp = metrics?.viewpoints ?: 0
+        val minVp = metrics?.min_viewpoints ?: 0
+
+        val netSuffix = when (currentConnStatus) {
+            ConnectionStatus.OFFLINE -> " | NET OFFLINE"
+            ConnectionStatus.RECONNECTING -> " | NET RECONNECT"
+            else -> ""
+        }
+        val pollSuffix = buildString {
+            if (exportNotReady409) append(" | NO_EXPORT")
+            if (exportPollFailures > 0) append(" | EXP RETRY")
+            if (readinessPollFailures > 0) append(" | RDY RETRY")
+        }
+
+        tvReadinessDetail.text =
+            "OBS ${obsPct}% | VDIV ${vdiv}/${minViews} | VP ${vp}/${minVp}" +
+                (if (ready == true) " | READY" else "") +
+                netSuffix +
+                pollSuffix
+
+        val colorRes =
+            if (ready == true) android.R.color.holo_green_light else android.R.color.holo_orange_light
+        pbReadiness.progressTintList =
+            android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, colorRes))
     }
 
     private fun maybeShowTutorial() {
@@ -1223,6 +1691,15 @@ class MainActivity : AppCompatActivity() {
                 iterator.remove()
                 break
             }
+        }
+
+        if ((originAnchorNode?.name ?: "") == anchorId) {
+            originAnchorNode = null
+            layerGlbManager?.setLayersRoot(null)
+            layerGlbManager?.clearAll()
+            voxelVisualizer.setRootParent(null)
+            currentVoxelData = null
+            showHint("⚠️ Origin anchor удалён. Поставь новую опору, чтобы закрепить слои")
         }
 
         updatePointsCount()
@@ -1314,7 +1791,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateCameraCoordinates() {
         try {
-            val frame = sceneView.arSession?.update() ?: return
+            val frame = sceneView.arFrame ?: return
             val pose = frame.camera.displayOrientedPose
 
             tvCoordX.text = "X:${"%.2f".format(pose.tx())}"
@@ -1341,7 +1818,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun vibrate(durationMs: Long = 50) {
         try {
-            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            val vibrator = getDefaultVibrator() ?: return
+            if (!vibrator.hasVibrator()) return
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
@@ -1397,6 +1875,15 @@ class MainActivity : AppCompatActivity() {
                     viewModel.setSessionId(sessionId)
                     rememberSessionInHistory(sessionId)
 
+                    // Reset export/layer state for new session.
+                    loadedExportRevId = null
+                    exportNotReady409 = false
+                    pendingAutoReloadRev = null
+                    lastAutoReloadAtMs = 0L
+                    exportedLayers = emptyList()
+                    exportedLayerPaths.clear()
+                    layerGlbManager?.clearAll()
+
                     consecutiveFailures = 0
                     frameCount = 0
 
@@ -1426,43 +1913,369 @@ class MainActivity : AppCompatActivity() {
         val sid = currentSessionId ?: return
 
         isStreaming = true
+        netState.setStreaming(true)
         streamJob?.cancel()
+        streamSendJob?.cancel()
+        ensureReleasePollingRunning(sid)
         streamJob = scope.launch {
             while (isActive && isStreaming && currentSessionId == sid) {
-                val ok = try {
-                    withContext(Dispatchers.IO) { sendFrame() }
-                } catch (_: Exception) {
-                    false
+                val nowMs = System.currentTimeMillis()
+                if (nowMs < nextStreamAttemptAtMs) {
+                    delay(min(streamIntervalMs, nextStreamAttemptAtMs - nowMs))
+                    continue
                 }
-
-                if (!ok) {
-                    consecutiveFailures += 1
+                if (streamSendJob?.isActive == true) {
+                    // Backpressure: remember that we need one more tick once current send finishes.
+                    streamPendingTick = true
                 } else {
-                    consecutiveFailures = 0
+                    streamSendJob = launch(Dispatchers.IO) {
+                        val t0 = System.nanoTime()
+                        val ok = try {
+                            withTimeout(2_500L) { sendFrameWith(streamJpegQuality, streamPointCap) }
+                        } catch (_: Exception) {
+                            false
+                        }
+                        val sendMs = ((System.nanoTime() - t0) / 1_000_000L).coerceAtLeast(0L)
+                        lastSendMs = sendMs
+
+                        withContext(Dispatchers.Main) {
+                            if (!ok) {
+                                consecutiveFailures += 1
+                                streamErrorStreak += 1
+                            } else {
+                                consecutiveFailures = 0
+                                streamErrorStreak = 0
+                            }
+
+                            // Centralized network state update (shared backoff/jitter).
+                            val baseUrl = getCurrentServerUrl().trimEnd('/')
+                            scope.launch(Dispatchers.IO) {
+                                netState.reportResult(
+                                    tag = "stream",
+                                    success = ok,
+                                    baseMs = RECONNECT_BASE_MS,
+                                    maxMs = RECONNECT_MAX_MS,
+                                    errorDetail = if (ok) null else "stream_failed"
+                                )
+                                withContext(Dispatchers.Main) {
+                                    val st = netState.getStatus()
+                                    currentConnStatus = st
+                                    viewModel.setConnectionState(st, baseUrl)
+                                }
+                            }
+
+                            // Auto-telemetry trigger: N stream errors in a row.
+                            if (!ok && streamErrorStreak >= 5) {
+                                maybeAutoReport("stream_errors_streak")
+                            }
+
+                            tuneStreaming(ok, lastSendMs)
+                            if (streamPendingTick) {
+                                streamPendingTick = false
+                            }
+                        }
+                    }
                 }
 
-                if (consecutiveFailures >= MAX_FAIL_RECONNECT) {
-                    val base = getCurrentServerUrl().trimEnd('/')
-                    viewModel.setConnectionState(ConnectionStatus.OFFLINE, base)
-                    val backoff = min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * consecutiveFailures.toLong())
-                    delay(backoff)
-                } else if (consecutiveFailures > 0) {
-                    val base = getCurrentServerUrl().trimEnd('/')
-                    viewModel.setConnectionState(ConnectionStatus.RECONNECTING, base)
+                if (consecutiveFailures > 0) {
+                    // Shared policy schedules when we may retry heavy stream sends.
+                    val snap = netState.snapshot()
+                    nextStreamAttemptAtMs = snap.nextAllowedAtMsByTag["stream"] ?: (nowMs + RECONNECT_BASE_MS)
+                } else {
+                    nextStreamAttemptAtMs = 0L
                 }
 
                 updateFrameCounter()
                 updateCameraCoordinates()
-                delay(STREAM_INTERVAL_MS)
+                val waitMs = if (streamImmediateNextTick) 0L else streamIntervalMs
+                streamImmediateNextTick = false
+                delay(waitMs)
             }
         }
     }
 
-    private suspend fun sendFrame(): Boolean {
+    private fun ensureReleasePollingRunning(sessionId: String) {
+        // Avoid double start on rotation/resume; restart only if session changed or jobs are not active.
+        if (pollingSessionId != sessionId || exportPollJob?.isActive != true || readinessPollJob?.isActive != true) {
+            stopReleasePolling()
+            pollingSessionId = sessionId
+            startExportLatestPolling(sessionId)
+            startReadinessPolling(sessionId)
+        }
+    }
+
+    private fun startExportLatestPolling(sessionId: String) {
+        exportPollJob?.cancel()
+        exportPollInFlight = false
+        exportPollFailures = 0
+        exportFailStreak = 0
+        nextExportPollAtMs = 0L
+
+        exportPollJob = lifecycleScope.launch {
+            // Poll export/latest so layers update without manual actions.
+            while (isActive && isStreaming && currentSessionId == sessionId) {
+                if (!isUiActive) {
+                    delay(500L)
+                    continue
+                }
+                val now = System.currentTimeMillis()
+                if (now < nextExportPollAtMs) {
+                    delay(min(2000L, nextExportPollAtMs - now))
+                    continue
+                }
+
+                if (!isStreaming || currentSessionId != sessionId) break
+                if (exportPollInFlight) continue
+                exportPollInFlight = true
+                try {
+                    // Shared backoff gate (export/latest participates in the same policy).
+                    netState.waitIfNeeded("export_latest")
+
+                    val resp = runCatching { lockExportMutex.withLock { api.exportLatest(sessionId) } }.getOrNull()
+                    if (resp == null) {
+                        exportPollFailures += 1
+                        exportFailStreak += 1
+                        val nextAt = netState.reportResult(tag = "export_latest", success = false, baseMs = 6500L, maxMs = 30_000L, errorDetail = "export_null")
+                        nextExportPollAtMs = nextAt
+                        crashReporter.recordReproError(endpoint = "/session/" + sessionId + "/export/latest", errorSnippet = "export/latest: null resp")
+                        continue
+                    }
+                    // 409 NO_EXPORT is expected early - ignore quietly.
+                    if (resp.code() == 409) {
+                        exportNotReady409 = true
+                        exportPollFailures = 0
+                        exportFailStreak = 0
+                        crashReporter.recordReproResponse(
+                            endpoint = "/session/" + sessionId + "/export/latest",
+                            httpCode = resp.code(),
+                            bodySnippet = "409 NO_EXPORT"
+                        )
+                        val nextAt = netState.reportResult(tag = "export_latest", success = true, baseMs = 6500L, maxMs = 30_000L)
+                        nextExportPollAtMs = nextAt
+                        withContext(Dispatchers.Main) {
+                            updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
+                        }
+                        continue
+                    }
+                    if (!resp.isSuccessful || resp.body() == null) {
+                        exportPollFailures += 1
+                        exportFailStreak += 1
+                        crashReporter.recordReproError(
+                            endpoint = "/session/" + sessionId + "/export/latest",
+                            httpCode = resp.code(),
+                            errorSnippet = ("export/latest failed: " + resp.code()).take(2048)
+                        )
+                        val nextAt = netState.reportResult(tag = "export_latest", success = false, baseMs = 6500L, maxMs = 30_000L, errorDetail = "export_http_" + resp.code())
+                        nextExportPollAtMs = nextAt
+                        if (exportFailStreak >= 3) {
+                            maybeAutoReport("export_latest_failures")
+                            exportFailStreak = 0
+                        }
+                        continue
+                    }
+
+                    exportNotReady409 = false
+                    exportPollFailures = 0
+                    exportFailStreak = 0
+                    val bundle = resp.body()!!
+                    val rev = bundle.revision_id ?: bundle.rev_id.orEmpty()
+                    if (rev.isBlank()) continue
+
+                    crashReporter.recordReproResponse(
+                        endpoint = "/session/" + sessionId + "/export/latest",
+                        httpCode = resp.code(),
+                        bodySnippet = safeJsonSnippet(bundle)
+                    )
+
+                    val nextAt = netState.reportResult(tag = "export_latest", success = true, baseMs = 6500L, maxMs = 30_000L)
+                    nextExportPollAtMs = nextAt
+
+                    if (originAnchorNode == null) {
+                        pendingExportRevId = rev
+                        continue
+                    }
+
+                    val now2 = System.currentTimeMillis()
+                    if (loadedExportRevId == null) {
+                        // First seen rev, try loading if origin exists.
+                        pendingExportRevId = rev
+                        lastAutoReloadAtMs = now2
+                        pendingAutoReloadRev = null
+                        loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
+                    } else if (loadedExportRevId != rev) {
+                        // New revision - auto reload, but with cooldown to avoid thrashing.
+                        val dt = now2 - lastAutoReloadAtMs
+                        if (dt < AUTO_RELOAD_COOLDOWN_MS) {
+                            pendingAutoReloadRev = rev
+                        } else {
+                            lastAutoReloadAtMs = now2
+                            pendingAutoReloadRev = null
+                            loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
+                        }
+                    }
+
+                    // If we delayed reload due to cooldown, apply it once cooldown passes.
+                    val pending = pendingAutoReloadRev
+                    if (pending != null && pending.isNotBlank() && (System.currentTimeMillis() - lastAutoReloadAtMs) >= AUTO_RELOAD_COOLDOWN_MS) {
+                        lastAutoReloadAtMs = System.currentTimeMillis()
+                        pendingAutoReloadRev = null
+                        loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
+                    }
+                } catch (e: Exception) {
+                    exportPollFailures += 1
+                    exportFailStreak += 1
+                    crashReporter.recordReproError(endpoint = "/session/" + sessionId + "/export/latest", errorSnippet = (e.message ?: "exception").take(2048))
+                    val nextAt = netState.reportResult(tag = "export_latest", success = false, baseMs = 6500L, maxMs = 30_000L, errorDetail = e.message)
+                    nextExportPollAtMs = nextAt
+                } finally {
+                    exportPollInFlight = false
+                    withContext(Dispatchers.Main) {
+                        val st = netState.getStatus()
+                        currentConnStatus = st
+                        viewModel.setConnectionState(st, getCurrentServerUrl().trimEnd('/'))
+                        runCatching { updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics) }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startReadinessPolling(sessionId: String) {
+        readinessPollJob?.cancel()
+        readinessPollFailures = 0
+        nextReadinessPollAtMs = 0L
+        readinessPollJob = lifecycleScope.launch {
+            while (isActive && isStreaming && currentSessionId == sessionId) {
+                if (!isUiActive) {
+                    delay(500L)
+                    continue
+                }
+                val now = System.currentTimeMillis()
+                if (now < nextReadinessPollAtMs) {
+                    delay(min(750L, nextReadinessPollAtMs - now))
+                    continue
+                }
+
+                if (!isStreaming || currentSessionId != sessionId) break
+
+                // Shared backoff gate (readiness participates in the same policy).
+                netState.waitIfNeeded("readiness")
+
+                val resp = runCatching { api.getReadiness(sessionId) }.getOrNull()
+                if (resp == null || !resp.isSuccessful || resp.body() == null) {
+                    readinessPollFailures += 1
+                    withContext(Dispatchers.Main) {
+                        updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
+                    }
+                    val nextAt = netState.reportResult(
+                        tag = "readiness",
+                        success = false,
+                        baseMs = 1500L,
+                        maxMs = 12_000L,
+                        errorDetail = "readiness_http"
+                    )
+                    nextReadinessPollAtMs = nextAt
+
+                    crashReporter.recordReproError(
+                        endpoint = "/session/" + sessionId + "/readiness",
+                        httpCode = resp?.code(),
+                        errorSnippet = "readiness failed"
+                    )
+
+                    withContext(Dispatchers.Main) {
+                        val st = netState.getStatus()
+                        currentConnStatus = st
+                        viewModel.setConnectionState(st, getCurrentServerUrl().trimEnd('/'))
+                        updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
+                    }
+                    continue
+                }
+
+                readinessPollFailures = 0
+                val body = resp.body()!!
+
+                withContext(Dispatchers.Main) {
+                    lastReadinessReady = body.ready
+                    lastReadinessScore = body.score
+                    lastReadinessMetrics = body.readiness_metrics
+                    updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
+                }
+
+                crashReporter.recordReproResponse(
+                    endpoint = "/session/" + sessionId + "/readiness",
+                    httpCode = resp.code(),
+                    bodySnippet = safeJsonSnippet(body)
+                )
+
+                val nextAt = netState.reportResult(tag = "readiness", success = true, baseMs = 1500L, maxMs = 12_000L)
+                nextReadinessPollAtMs = nextAt
+
+                withContext(Dispatchers.Main) {
+                    val st = netState.getStatus()
+                    currentConnStatus = st
+                    viewModel.setConnectionState(st, getCurrentServerUrl().trimEnd('/'))
+                    lastReadinessReady = body.ready
+                    lastReadinessScore = body.score
+                    lastReadinessMetrics = body.readiness_metrics
+                    updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
+                }
+            }
+        }
+    }
+
+    private fun stopReleasePolling() {
+        exportPollJob?.cancel()
+        exportPollJob = null
+        readinessPollJob?.cancel()
+        readinessPollJob = null
+        exportPollInFlight = false
+        exportPollFailures = 0
+        readinessPollFailures = 0
+        nextExportPollAtMs = 0L
+        nextReadinessPollAtMs = 0L
+        exportNotReady409 = false
+        pendingAutoReloadRev = null
+        pollingSessionId = null
+    }
+
+    private fun tuneStreaming(ok: Boolean, sendMs: Long) {
+        // EWMA send time for adaptive throttling.
+        val x = sendMs.toDouble()
+        sendTimeEwmaMs = if (sendTimeEwmaMs <= 0.0) x else (0.8 * sendTimeEwmaMs + 0.2 * x)
+
+        val minInterval = 300L
+        val maxInterval = 1500L
+
+        if (!ok) {
+            // Back off: reduce quality and point cap quickly.
+            streamJpegQuality = (streamJpegQuality - 6).coerceAtLeast(45)
+            streamPointCap = (streamPointCap - 40).coerceAtLeast(120)
+            streamIntervalMs = (streamIntervalMs + 150L).coerceAtMost(maxInterval)
+            return
+        }
+
+        // Success: slowly restore quality/cap, and adapt interval to keep CPU/network stable.
+        streamJpegQuality = (streamJpegQuality + 1).coerceAtMost(80)
+        streamPointCap = (streamPointCap + 10).coerceAtMost(450)
+
+        val target = (sendTimeEwmaMs * 1.3).toLong().coerceIn(minInterval, maxInterval)
+        streamIntervalMs = ((0.85 * streamIntervalMs.toDouble()) + (0.15 * target.toDouble())).toLong()
+            .coerceIn(minInterval, maxInterval)
+    }
+
+    private suspend fun sendFrame(): Boolean = sendFrameWith(streamJpegQuality, streamPointCap)
+
+    private suspend fun sendFrameWith(jpegQuality: Int, pointCap: Int): Boolean {
         val sid = currentSessionId ?: return false
 
-        // 1) Сбор данных кадра с main thread
-        val payload = withContext(Dispatchers.Main) {
+        data class FramePacket(
+            val payload: HashMap<String, Any>,
+            val yuv: ImageUtils.Yuv420Copy,
+            val swapUv: Boolean,
+            val depth: DepthUtils.DepthFrame?
+        )
+
+        val packet = withContext(Dispatchers.Main) {
             val manualMeasurements = runCatching {
                 arRuler.getSavedMeasurements().map { m ->
                     mapOf(
@@ -1475,50 +2288,55 @@ class MainActivity : AppCompatActivity() {
                 }
             }.getOrDefault(emptyList())
 
-            val frame = try {
-                sceneView.arSession?.update()
-            } catch (_: Exception) {
-                null
-            } ?: return@withContext null
-
+            val frame = sceneView.arFrame ?: return@withContext null
             try {
                 val cam = frame.camera
                 if (cam.trackingState != TrackingState.TRACKING) return@withContext null
 
-                // RGB
                 val image = try {
                     frame.acquireCameraImage()
                 } catch (_: Exception) {
                     null
                 } ?: return@withContext null
 
-                val rgbBase64 = try {
-                    ImageUtils.imageToBase64(image)
+                val swapUv = settingsPrefs.getBoolean(PREF_CAMERA_SWAP_UV, false)
+                val yuvCopy = try {
+                    // Copy planes quickly on main thread while Image is valid.
+                    ImageUtils.copyYuv420(image)
                 } finally {
-                    try { image.close() } catch (_: Exception) { }
+                    runCatching { image.close() }
                 }
 
-                // Intrinsics
+                val shouldSendDepth = (depthFrameCounter % DEPTH_SEND_EVERY == 0)
+                depthFrameCounter++
+                val acquiredDepth = if (shouldSendDepth) DepthUtils.tryAcquireDepth16(frame) else null
+                val depthFrame = acquiredDepth?.let { acquired ->
+                    try {
+                        DepthUtils.copyDepth16(acquired.image, acquired.isRaw)
+                    } finally {
+                        runCatching { acquired.image.close() }
+                    }
+                }
+                if (shouldSendDepth && acquiredDepth == null) {
+                    val now = System.currentTimeMillis()
+                    if (!depthUnavailableWarned || (now - lastDepthWarningMs) > 10_000L) {
+                        depthUnavailableWarned = true
+                        lastDepthWarningMs = now
+                        showHint("ℹ️ Depth недоступен на устройстве - отправляем только point cloud")
+                    }
+                }
+
                 val intr = cam.imageIntrinsics
                 val focal = intr.focalLength
                 val pp = intr.principalPoint
                 val dims = intr.imageDimensions
 
-                val fx = focal[0].toDouble()
-                val fy = focal[1].toDouble()
-                val cx = pp[0].toDouble()
-                val cy = pp[1].toDouble()
-                val w = dims[0].toInt()
-                val h = dims[1].toInt()
-
-                // Pose
                 val pose = cam.pose
                 val q = FloatArray(4)
                 pose.getRotationQuaternion(q, 0)
                 val position = listOf(pose.tx(), pose.ty(), pose.tz())
                 val quaternion = listOf(q[0], q[1], q[2], q[3])
 
-                // Point cloud
                 val pc = try {
                     frame.acquirePointCloud()
                 } catch (_: Exception) {
@@ -1528,22 +2346,19 @@ class MainActivity : AppCompatActivity() {
                 val points: List<List<Float>> = if (pc != null) {
                     try {
                         val buf = pc.points
-                        val total = buf.remaining() / 4
-                        val cap = 3000
-                        val step = maxOf(1, total / cap)
-                        val out = ArrayList<List<Float>>(min(total, cap))
+                        val pointCount = buf.remaining() / 4
+                        val cap = pointCap
+                        val step = maxOf(1, pointCount / cap)
+                        val out = ArrayList<List<Float>>(min(pointCount, cap))
                         var i = 0
-                        while (i < total) {
+                        while (i < pointCount) {
                             val baseIdx = i * 4
-                            val x = buf.get(baseIdx)
-                            val y = buf.get(baseIdx + 1)
-                            val z = buf.get(baseIdx + 2)
-                            out.add(listOf(x, y, z))
+                            out.add(listOf(buf.get(baseIdx), buf.get(baseIdx + 1), buf.get(baseIdx + 2)))
                             i += step
                         }
                         out
                     } finally {
-                        try { pc.release() } catch (_: Exception) { }
+                        runCatching { pc.release() }
                     }
                 } else {
                     emptyList()
@@ -1552,16 +2367,17 @@ class MainActivity : AppCompatActivity() {
                 val basePayload = hashMapOf<String, Any>(
                     "frame_id" to ("frm_" + frameCount),
                     "timestamp" to (System.currentTimeMillis() / 1000.0),
-                    "rgb_base64" to rgbBase64,
                     "measurements_json" to runCatching { arRuler.exportMeasurements() }.getOrDefault(""),
                     "intrinsics" to mapOf(
-                        "fx" to fx,
-                        "fy" to fy,
-                        "cx" to cx,
-                        "cy" to cy,
-                        "width" to w,
-                        "height" to h
+                        "fx" to focal[0].toDouble(),
+                        "fy" to focal[1].toDouble(),
+                        "cx" to pp[0].toDouble(),
+                        "cy" to pp[1].toDouble(),
+                        "width" to dims[0].toInt(),
+                        "height" to dims[1].toInt()
                     ),
+                    "rgb_width" to yuvCopy.width,
+                    "rgb_height" to yuvCopy.height,
                     "pose" to mapOf(
                         "position" to position,
                         "quaternion" to quaternion
@@ -1569,25 +2385,83 @@ class MainActivity : AppCompatActivity() {
                     "point_cloud" to points
                 )
 
+                val originPose = originAnchorNode?.anchor?.pose
+                if (originPose != null) {
+                    val oq = FloatArray(4)
+                    originPose.getRotationQuaternion(oq, 0)
+                    basePayload["origin_anchor_pose"] = mapOf(
+                        "position" to listOf(originPose.tx(), originPose.ty(), originPose.tz()),
+                        "quaternion" to listOf(oq[0], oq[1], oq[2], oq[3])
+                    )
+                }
+
                 if (manualMeasurements.isNotEmpty()) {
                     basePayload["manual_measurements"] = manualMeasurements
                 }
-                basePayload
+
+                if (shouldSendDepth && depthFrame == null) {
+                    basePayload["depth_unavailable"] = true
+                }
+
+                FramePacket(basePayload, yuvCopy, swapUv, depthFrame)
             } catch (_: Exception) {
                 null
             }
         }
 
-        if (payload == null) return true // кадр не готов - не считаем это сетевой ошибкой
+        if (packet == null) return true
 
-        // 2) Отправка
+        withContext(Dispatchers.Main) {
+            if (packet.depth == null) {
+                depthUnavailableStreak += 1
+                if (!depthHintShown && depthUnavailableStreak >= 5) {
+                    depthHintShown = true
+                    showHint("⚠️ Depth недоступен на устройстве или отключён в ARCore")
+                }
+            } else {
+                depthUnavailableStreak = 0
+            }
+        }
+
+        val payload = withContext(Dispatchers.Default) {
+            packet.payload.apply {
+                this["client_stats"] = mapOf(
+                    "jpeg_quality" to jpegQuality,
+                    "point_cap" to pointCap,
+                    "send_interval_ms" to streamIntervalMs,
+                    "last_send_ms" to lastSendMs,
+                    "conn" to currentConnStatus.name,
+                )
+                HeavyOps.withPermit {
+                    val nv21 = ImageUtils.yuvCopyToNv21(packet.yuv, swapUv = packet.swapUv)
+                    this["rgb_base64"] = ImageUtils.nv21ToJpegBase64(nv21.data, nv21.width, nv21.height, jpegQuality)
+                    val depth = packet.depth
+                    if (depth != null) {
+                        this["depth_base64"] = DepthUtils.depthBytesToBase64(depth.bytes)
+                        this["depth_width"] = depth.width
+                        this["depth_height"] = depth.height
+                        this["depth_scale_m_per_unit"] = depth.scaleMPerUnit
+                        this["depth_scale"] = depth.scaleMPerUnit
+                        this["depth_is_raw"] = depth.isRaw
+                        this["depth_format"] = depth.format
+                        this["depth_invalid_value"] = depth.invalidValue
+                    }
+                }
+            }
+        }
+
         val resp = try {
             api.streamData(sid, payload)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            crashReporter.recordException("streamData", e)
+            crashReporter.recordReproError(endpoint = "/session/" + sid + "/stream", errorSnippet = (e.message ?: "exception").take(2048))
             return false
         }
 
         if (!resp.isSuccessful) {
+            val errSnippet = runCatching { resp.errorBody()?.string() }.getOrNull()?.take(2048)
+            crashReporter.recordError("streamData", "HTTP ${resp.code()}")
+            crashReporter.recordReproError(endpoint = "/session/" + sid + "/stream", httpCode = resp.code(), errorSnippet = (errSnippet ?: ("HTTP " + resp.code())).take(2048))
             return false
         }
 
@@ -1596,20 +2470,31 @@ class MainActivity : AppCompatActivity() {
         withContext(Dispatchers.Main) {
             frameCount += 1
             val hints = body.ai_hints
+            when (body.status) {
+                "NEEDS_SCAN" -> {
+                    val scanDirections = buildList {
+                        hints?.scan_plan?.let { addAll(it) }
+                        hints?.next_best_views?.let { addAll(it) }
+                    }.distinct()
+                    if (scanDirections.isNotEmpty()) showScanHintsBar(scanDirections)
+                }
+                "READY" -> {
+                    hideScanHintsBar()
+                    if (userMarkers.size >= MIN_POINTS_FOR_MODEL && !hasRedZones) startPlayButtonPulse()
+                }
+                else -> if (hints?.is_scan_complete == true) hideScanHintsBar()
+            }
             if (hints != null) {
                 updateQualityUI(hints.quality_score)
                 val msg = when {
-                    !hints.warnings.isNullOrEmpty() -> hints.warnings.joinToString("\n")
-                    !hints.instructions.isNullOrEmpty() -> hints.instructions.joinToString("\n")
+                    !hints.warnings.isNullOrEmpty() -> hints.warnings!!.joinToString("\n")
+                    !hints.scan_plan.isNullOrEmpty() && body.status == "NEEDS_SCAN" -> "📍 Нужно досканировать: " + hints.scan_plan!!.take(2).joinToString(" | ")
+                    !hints.instructions.isNullOrEmpty() -> hints.instructions!!.joinToString("\n")
                     else -> null
                 }
-                if (!msg.isNullOrBlank()) {
-                    showHint(msg)
-                }
-
-                if (userMarkers.size >= MIN_POINTS_FOR_MODEL) {
-                    btnAnalyze.isEnabled = true
-                }
+                if (!msg.isNullOrBlank()) showHint(msg)
+                if (userMarkers.size >= MIN_POINTS_FOR_MODEL) btnAnalyze.isEnabled = true
+                if (hints.is_ready == true && !hasRedZones) startPlayButtonPulse()
             }
         }
 
@@ -1618,11 +2503,57 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopStreaming() {
         isStreaming = false
+        runCatching { netState.setStreaming(false) }
         streamJob?.cancel()
         streamJob = null
+        streamSendJob?.cancel()
+        streamSendJob = null
+        stopReleasePolling()
     }
 
-    private suspend fun doRequestModeling() {
+    private fun startAutoVoxelRefresh(sessionId: String) {
+        stopAutoVoxelRefresh()
+        autoVoxelRefreshJob = lifecycleScope.launch {
+            while (isActive && eyeOfAIActive) {
+                delay(VOXEL_AUTO_REFRESH_MS)
+                if (!eyeOfAIActive || currentSessionId != sessionId) break
+                runCatching { api.getVoxels(sessionId) }.onSuccess { response ->
+                    if (response.isSuccessful && response.body() != null) {
+                        val voxelResponse = response.body()!!
+                        if (voxelResponse.total_count > 0) {
+                            currentVoxelData = voxelResponse.voxels.map { v ->
+                                VoxelData(v.position, v.type, v.color, v.alpha.toFloat(), voxelResponse.resolution.toFloat(), v.radius)
+                            }
+                            voxelVisualizer.setRootParent(originAnchorNode)
+                            voxelVisualizer.showVoxels(currentVoxelData!!)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun stopAutoVoxelRefresh() {
+        autoVoxelRefreshJob?.cancel()
+        autoVoxelRefreshJob = null
+    }
+
+    private fun showScanHintsBar(hints: List<String>) {
+        if (appState != AppState.SCANNING) return
+        currentScanHints = hints
+        scanHintsVisible = true
+        tvAiCritique.visibility = View.VISIBLE
+        tvAiCritique.text = hints.take(3).joinToString("\n") { "📍 $it" }
+        tvAiCritique.setTextColor(android.graphics.Color.parseColor("#FF6600"))
+    }
+
+    private fun hideScanHintsBar() {
+        currentScanHints = emptyList()
+        scanHintsVisible = false
+        if (tvAiCritique.text.toString().startsWith("📍")) tvAiCritique.visibility = View.GONE
+    }
+
+    private suspend fun doRequestModeling(measurementsJson: String = "", measurementConstraints: List<MeasurementConstraint> = emptyList()) {
         val sid = currentSessionId
         if (sid.isNullOrBlank()) {
             withContext(Dispatchers.Main) {
@@ -1642,7 +2573,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val response = try {
-            api.startModeling(sid)
+            if (measurementsJson.isNotBlank() || measurementConstraints.isNotEmpty()) api.startModelingWithMeasurements(sid, ModelingWithMeasurementsPayload(measurementsJson, measurementConstraints)) else api.startModeling(sid)
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
                 showError("Ошибка моделирования: " + (e.message ?: "UNKNOWN"))
@@ -1668,8 +2599,8 @@ class MainActivity : AppCompatActivity() {
             val opts = model.options.orEmpty()
             variantAdapter.submit(opts, selected = 0)
 
-            // Показать первый вариант
             if (opts.isNotEmpty()) onVariantSelected(0)
+            if (measurementConstraints.isNotEmpty()) showHint("📐 ${measurementConstraints.size} измерений использовано как ограничения")
         }
     }
 
@@ -1679,11 +2610,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val frame = try {
-            sceneView.arSession?.update()
-        } catch (_: Exception) {
-            null
-        } ?: return
+        val frame = sceneView.arFrame ?: return
 
         val x = sceneView.width / 2f
         val y = sceneView.height / 2f
@@ -1700,17 +2627,30 @@ class MainActivity : AppCompatActivity() {
 
         val anchor = hit.createAnchor()
         val anchorNode = AnchorNode(anchor).apply {
-            setParent(sceneView)
+            setParent(sceneView.scene)
         }
 
         // Маленький визуальный маркер
         val marker = Node().apply {
-            parent = anchorNode
+            setParent(anchorNode)
             localScale = Vector3(0.05f, 0.05f, 0.05f)
             renderable = ModelAssets.getCopy(ModelAssets.ModelType.WEDGE_NODE)
         }
 
         anchorNodes.add(anchorNode)
+        if (originAnchorNode == null) {
+            originAnchorNode = anchorNode
+            layerGlbManager?.setLayersRoot(originAnchorNode)
+            voxelVisualizer.setRootParent(originAnchorNode)
+        }
+
+        // If export/latest was already produced (server-side) before origin was set, auto-load now.
+        if (originAnchorNode == anchorNode) {
+            val sid = currentSessionId
+            if (!sid.isNullOrBlank() && !pendingExportRevId.isNullOrBlank()) {
+                scope.launch { loadExportLayersInternal(sid, showDialog = false, showOkHint = false) }
+            }
+        }
 
         val p = anchor.pose
         val markerId = "a-${UUID.randomUUID().toString().take(8)}"
@@ -1740,6 +2680,30 @@ class MainActivity : AppCompatActivity() {
         }
 
         showHint("✓ Точка добавлена: ${userMarkers.size}")
+    }
+
+    private fun confirmResetOrigin() {
+        AlertDialog.Builder(this)
+            .setTitle("Сброс origin")
+            .setMessage("Сбросить origin и удалить все точки опоры? Это нужно, если origin поставили неверно.")
+            .setPositiveButton("Сбросить") { _, _ ->
+                resetOriginAndAnchors()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun resetOriginAndAnchors() {
+        clearARAnchors()
+        loadedExportRevId = null
+        pendingExportRevId = null
+        exportedLayers = emptyList()
+        exportedLayerPaths.clear()
+        layerGlbManager?.clearAll()
+        currentVoxelData = null
+        voxelVisualizer.hideVoxels()
+        showHint("✓ Origin сброшен. Поставь новую опору")
+        scope.launch { runCatching { syncAnchorsToServer() } }
     }
 
 
@@ -1900,6 +2864,7 @@ class MainActivity : AppCompatActivity() {
             voxelLegend.visibility = View.GONE
             fabEyeOfAI.setImageResource(R.drawable.ic_eye)
             eyeOfAIActive = false
+            stopAutoVoxelRefresh()
             soundManager.play(SoundType.WHOOSH, volume = 0.3f, pitch = 0.8f)
             return
         }
@@ -1933,6 +2898,7 @@ class MainActivity : AppCompatActivity() {
                     eyeOfAIActive = true
                     soundManager.play(SoundType.WHOOSH, volume = 0.5f, pitch = 1.5f)
                     showToast("👁️ Теперь вы видите глазами ИИ! Вокселей: ${voxelResponse.total_count}")
+                    startAutoVoxelRefresh(sessionId)
                 } else {
                     showError("Не удалось загрузить воксели")
                 }
@@ -2008,7 +2974,8 @@ class MainActivity : AppCompatActivity() {
             .setTextColor(getColor(android.R.color.white))
             .show()
 
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        val vibrator = getDefaultVibrator() ?: return
+        if (!vibrator.hasVibrator()) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
         } else {
@@ -2085,10 +3052,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun vibrateShort() {
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (!vibrator.hasVibrator()) {
-            return
-        }
+        val vibrator = getDefaultVibrator() ?: return
+        if (!vibrator.hasVibrator()) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createOneShot(70, 120))
@@ -2165,6 +3130,14 @@ class MainActivity : AppCompatActivity() {
                 showLayersDialog()
                 true
             }
+            R.id.action_reset_origin -> {
+                if (originAnchorNode == null) {
+                    showHint("ℹ️ Origin ещё не задан")
+                } else {
+                    confirmResetOrigin()
+                }
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -2174,8 +3147,95 @@ class MainActivity : AppCompatActivity() {
         anchorNodes.clear()
         anchorMarkerNodes.clear()
         userMarkers.clear()
+        originAnchorNode = null
+        layerGlbManager?.setLayersRoot(null)
+        voxelVisualizer.setRootParent(null)
         updatePointsCount()
         btnAnalyze.isEnabled = false
         sceneBuilder.clearScene()
+
+        currentSessionId?.let { sid ->
+            scope.launch {
+                syncAnchorsToServer(allowEmpty = true)
+                if (currentConnStatus == ConnectionStatus.ONLINE) {
+                    flushOfflineAndTelemetry(sid, getCurrentServerUrl().trimEnd('/'))
+                }
+            }
+        }
     }
+
+
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestCameraPermission() {
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    override fun onResume() {
+        isUiActive = true
+        if (isStreaming && !currentSessionId.isNullOrBlank()) {
+            ensureReleasePollingRunning(currentSessionId!!)
+        }
+        super.onResume()
+
+        if (!hasCameraPermission()) {
+            requestCameraPermission()
+            return
+        }
+
+        // Ensure ARCore is installed / updated.
+        try {
+            when (ArCoreApk.getInstance().requestInstall(this, !arCoreInstallRequested)) {
+                ArCoreApk.InstallStatus.INSTALL_REQUESTED -> {
+                    arCoreInstallRequested = true
+                    return
+                }
+
+                ArCoreApk.InstallStatus.INSTALLED -> {
+                    // continue
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "ARCore install/request failed: ${e.message}", e)
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("ARCore не установлен или не поддерживается.")
+            }
+            return
+        }
+
+        startArIfReady()
+
+        try {
+            sceneView.resume()
+        } catch (e: CameraNotAvailableException) {
+            Log.e("MainActivity", "Camera not available on resume", e)
+            showError("Камера недоступна. Закройте другие приложения, использующие камеру.")
+        }
+
+        if (eyeOfAIActive) {
+            val sid = currentSessionId
+            if (!sid.isNullOrBlank()) startAutoVoxelRefresh(sid)
+        }
+    }
+
+    override fun onPause() {
+        isUiActive = false
+        stopReleasePolling()
+        super.onPause()
+        stopStreaming()
+        stopAutoVoxelRefresh()
+        runCatching { sceneView.pause() }
+    }
+
+    private fun safeJsonSnippet(obj: Any): String {
+        return try {
+            gson.toJson(obj).take(2048)
+        } catch (e: Exception) {
+            ("<json_error:" + (e.message ?: "unknown") + ">").take(256)
+        }
+    }
+
 }

@@ -4,11 +4,15 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Bundle
+import android.graphics.Color
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,8 +23,20 @@ import org.json.JSONArray
 class SettingsActivity : AppCompatActivity() {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+
+
+    private fun applySystemBars() {
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = ContextCompat.getColor(this, R.color.navigation_bar)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applySystemBars()
         setContentView(R.layout.activity_settings)
 
         val etUrl: EditText = findViewById(R.id.et_server_url)
@@ -96,11 +112,17 @@ class SettingsActivity : AppCompatActivity() {
         btnCopy.setOnClickListener {
             val raw = prefs.getString(AppPrefs.KEY_SESSION_HISTORY, "") ?: ""
             val arr = runCatching { JSONArray(raw) }.getOrNull()
-            val sid = arr?.optJSONObject(0)?.optString("session_id", null)
+            // optString(name, fallback) expects String fallback, not null.
+            val sid = arr
+                ?.optJSONObject(0)
+                ?.optString("session_id")
+                ?.takeIf { it.isNotBlank() }
             if (!sid.isNullOrBlank()) {
                 val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 cm.setPrimaryClip(ClipData.newPlainText("session_id", sid))
                 AlertDialog.Builder(this).setMessage("Copied: $sid").setPositiveButton("OK", null).show()
+            } else {
+                AlertDialog.Builder(this).setMessage("No session_id to copy").setPositiveButton("OK", null).show()
             }
         }
 
