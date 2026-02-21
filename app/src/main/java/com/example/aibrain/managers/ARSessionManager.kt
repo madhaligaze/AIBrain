@@ -48,12 +48,12 @@ class ARSessionManager(
         applyConfig(session)
 
         return try {
-            sceneView.setupSession(session)
+            sceneView.session = session
             sceneView.planeRenderer.isVisible = true
             Log.i(TAG, "ARCore Session created. depthMode=$depthMode")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "sceneView.setupSession() failed: ${e.message}", e)
+            Log.e(TAG, "sceneView.session assignment failed: ${e.message}", e)
             session.close()
             false
         }

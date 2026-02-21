@@ -365,7 +365,7 @@ class MainActivity : AppCompatActivity() {
 
         val prevHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            runCatching { crashReporter.recordError("UNCAUGHT:${t.name}", e, fatal = true) }
+            runCatching { crashReporter.recordException("UNCAUGHT:${t.name}", e) }
             runCatching {
                 val body = buildString {
                     append(System.currentTimeMillis())
@@ -385,8 +385,7 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
 
         if (!passesReleaseDeviceGate()) {
-            showReleaseDeviceUnsupportedDialog()
-            return
+            showReleaseDeviceCompatibilityWarning()
         }
 
         // Camera permission is required for ARCore / ruler.
@@ -870,10 +869,10 @@ class MainActivity : AppCompatActivity() {
                 return
             }
             offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordError("lockSession", IllegalStateException("HTTP ${resp.code()}"))
+            crashReporter.recordError("lockSession", "HTTP ${resp.code()}")
         } catch (e: Exception) {
             offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordError("lockSession", e)
+            crashReporter.recordException("lockSession", e)
         }
 
         runCatching { api.exportLatest(sid) }.onSuccess { exp ->
@@ -1222,15 +1221,12 @@ class MainActivity : AppCompatActivity() {
             lockExportMutex.withLock {
                 offlineQueue.flushForSession(api, sessionId, baseUrl)
             }
-            crashReporter.flush(
+            crashReporter.sendNow(
                 api = api,
                 sessionId = sessionId,
-                connectionStatus = currentConnStatus.name,
-                serverBaseUrl = baseUrl,
-                lastExportRev = lastRevisionId,
-                loadedExportRev = loadedExportRevId,
-                lastRevisionId = lastRevisionId,
-                clientStats = buildClientStats()
+                clientStats = buildClientStats(),
+                queuedActions = buildQueuedActionsForReport(),
+                trigger = "flush"
             )
             netState.reportResult(tag = "flush", success = true, baseMs = 20_000L, maxMs = 60_000L)
         } catch (e: Exception) {
@@ -1293,12 +1289,12 @@ class MainActivity : AppCompatActivity() {
                 true
             } else {
                 offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
-                crashReporter.recordError("postAnchors", IllegalStateException("HTTP ${resp.code()}"))
+                crashReporter.recordError("postAnchors", "HTTP ${resp.code()}")
                 false
             }
         } catch (e: Exception) {
             offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
-            crashReporter.recordError("postAnchors", e)
+            crashReporter.recordException("postAnchors", e)
             false
         }
     }
@@ -3194,15 +3190,14 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun showReleaseDeviceUnsupportedDialog() {
+    private fun showReleaseDeviceCompatibilityWarning() {
         AlertDialog.Builder(this)
-            .setTitle("Устройство не подходит для AR релиза")
+            .setTitle("Рекомендация по устройству")
             .setMessage(
-                "Для стабильной AR-работы нужен совместимый ARCore смартфон уровня флагмана: " +
-                    "Android 10+, минимум 6 ГБ RAM и современный GPU/камера."
+                "Приложение будет запущено, но наиболее корректно AR-режим работает на совместимых " +
+                    "с ARCore смартфонах с Android 10+, минимум 6 ГБ RAM и современным GPU/камерой."
             )
-            .setCancelable(false)
-            .setPositiveButton("Закрыть") { _, _ -> finish() }
+            .setPositiveButton("Понятно", null)
             .show()
     }
 
