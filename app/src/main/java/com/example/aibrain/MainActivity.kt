@@ -365,7 +365,7 @@ class MainActivity : AppCompatActivity() {
 
         val prevHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            runCatching { crashReporter.recordError("UNCAUGHT:${t.name}", e, fatal = true) }
+            runCatching { crashReporter.recordException("UNCAUGHT:${t.name}", e) }
             runCatching {
                 val body = buildString {
                     append(System.currentTimeMillis())
@@ -870,10 +870,10 @@ class MainActivity : AppCompatActivity() {
                 return
             }
             offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordError("lockSession", IllegalStateException("HTTP ${resp.code()}"))
+            crashReporter.recordError("lockSession", "HTTP ${resp.code()}")
         } catch (e: Exception) {
             offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordError("lockSession", e)
+            crashReporter.recordException("lockSession", e)
         }
 
         runCatching { api.exportLatest(sid) }.onSuccess { exp ->
@@ -1222,15 +1222,12 @@ class MainActivity : AppCompatActivity() {
             lockExportMutex.withLock {
                 offlineQueue.flushForSession(api, sessionId, baseUrl)
             }
-            crashReporter.flush(
+            crashReporter.sendNow(
                 api = api,
                 sessionId = sessionId,
-                connectionStatus = currentConnStatus.name,
-                serverBaseUrl = baseUrl,
-                lastExportRev = lastRevisionId,
-                loadedExportRev = loadedExportRevId,
-                lastRevisionId = lastRevisionId,
-                clientStats = buildClientStats()
+                clientStats = buildClientStats(),
+                queuedActions = buildQueuedActionsForReport(),
+                trigger = "flush"
             )
             netState.reportResult(tag = "flush", success = true, baseMs = 20_000L, maxMs = 60_000L)
         } catch (e: Exception) {
@@ -1293,12 +1290,12 @@ class MainActivity : AppCompatActivity() {
                 true
             } else {
                 offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
-                crashReporter.recordError("postAnchors", IllegalStateException("HTTP ${resp.code()}"))
+                crashReporter.recordError("postAnchors", "HTTP ${resp.code()}")
                 false
             }
         } catch (e: Exception) {
             offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
-            crashReporter.recordError("postAnchors", e)
+            crashReporter.recordException("postAnchors", e)
             false
         }
     }
