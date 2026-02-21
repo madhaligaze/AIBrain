@@ -385,8 +385,7 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
 
         if (!passesReleaseDeviceGate()) {
-            showReleaseDeviceUnsupportedDialog()
-            return
+            showReleaseDeviceCompatibilityWarning()
         }
 
         // Camera permission is required for ARCore / ruler.
@@ -3191,15 +3190,14 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun showReleaseDeviceUnsupportedDialog() {
+    private fun showReleaseDeviceCompatibilityWarning() {
         AlertDialog.Builder(this)
-            .setTitle("Устройство не подходит для AR релиза")
+            .setTitle("Рекомендация по устройству")
             .setMessage(
-                "Для стабильной AR-работы нужен совместимый ARCore смартфон уровня флагмана: " +
-                    "Android 10+, минимум 6 ГБ RAM и современный GPU/камера."
+                "Приложение будет запущено, но наиболее корректно AR-режим работает на совместимых " +
+                    "с ARCore смартфонах с Android 10+, минимум 6 ГБ RAM и современным GPU/камерой."
             )
-            .setCancelable(false)
-            .setPositiveButton("Закрыть") { _, _ -> finish() }
+            .setPositiveButton("Понятно", null)
             .show()
     }
 
