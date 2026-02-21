@@ -2,6 +2,7 @@ package com.example.aibrain
 
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import android.app.ActivityManager
 import android.Manifest
 import android.content.Context
 import android.content.SharedPreferences
@@ -136,6 +137,8 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_CAMERA_SWAP_UV = "camera_swap_uv"
         private const val DEPTH_SEND_EVERY = 5
         private const val VOXEL_AUTO_REFRESH_MS = 30_000L
+        private const val MIN_RELEASE_API_LEVEL = Build.VERSION_CODES.Q
+        private const val MIN_RELEASE_RAM_GB = 6.0
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -381,6 +384,11 @@ class MainActivity : AppCompatActivity() {
         initViews()
         setupClickListeners()
 
+        if (!passesReleaseDeviceGate()) {
+            showReleaseDeviceUnsupportedDialog()
+            return
+        }
+
         // Camera permission is required for ARCore / ruler.
         if (hasCameraPermission()) {
             startArIfReady()
@@ -535,16 +543,15 @@ class MainActivity : AppCompatActivity() {
         if (!::sceneView.isInitialized) return
         if (!hasCameraPermission()) return
         if (!isArSceneReady) {
-            setupARScene()
-            isArSceneReady = true
+            isArSceneReady = setupARScene()
         }
-        if (!isRulerReady) {
+        if (isArSceneReady && !isRulerReady) {
             initializeRuler()
             isRulerReady = true
         }
     }
 
-    private fun setupARScene() {
+    private fun setupARScene(): Boolean {
         // Конфигурацию ARCore Session делаем через ARSessionManager (без SceneView-специфичных API).
 
         if (!::arManager.isInitialized) {
@@ -553,7 +560,7 @@ class MainActivity : AppCompatActivity() {
         val sessionOk = arManager.setupSession()
         if (!sessionOk) {
             showError("ARCore сессия не запустилась. Убедитесь что ARCore обновлён и камера доступна.")
-            return
+            return false
         }
         if (arManager.depthMode == Config.DepthMode.DISABLED && !depthHintShown) {
             depthHintShown = true
@@ -583,6 +590,7 @@ class MainActivity : AppCompatActivity() {
                 delay(100)
             }
         }
+        return true
     }
 
     private fun setupClickListeners() {
@@ -3164,6 +3172,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    private fun passesReleaseDeviceGate(): Boolean {
+        if (Build.VERSION.SDK_INT < MIN_RELEASE_API_LEVEL) return false
+
+        val availability = ArCoreApk.getInstance().checkAvailability(this)
+        if (availability.isUnsupported) return false
+
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val memInfo = ActivityManager.MemoryInfo().also { info ->
+            am?.getMemoryInfo(info)
+        }
+        val totalRamGb = memInfo.totalMem.toDouble() / (1024.0 * 1024.0 * 1024.0)
+        if (totalRamGb < MIN_RELEASE_RAM_GB) return false
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val mediaClass = Build.VERSION.MEDIA_PERFORMANCE_CLASS
+            if (mediaClass != 0 && mediaClass < Build.VERSION_CODES.S) return false
+        }
+
+        return true
+    }
+
+    private fun showReleaseDeviceUnsupportedDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Устройство не подходит для AR релиза")
+            .setMessage(
+                "Для стабильной AR-работы нужен совместимый ARCore смартфон уровня флагмана: " +
+                    "Android 10+, минимум 6 ГБ RAM и современный GPU/камера."
+            )
+            .setCancelable(false)
+            .setPositiveButton("Закрыть") { _, _ -> finish() }
+            .show()
+    }
 
     private fun hasCameraPermission(): Boolean {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
