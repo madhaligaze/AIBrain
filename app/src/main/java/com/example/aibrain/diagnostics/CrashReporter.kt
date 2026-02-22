@@ -45,7 +45,13 @@ class CrashReporter(private val context: Context) {
     }
 
     fun recordException(tag: String, t: Throwable) {
-        recordError(tag, t.message ?: t.javaClass.simpleName, Log.getStackTraceString(t))
+        recordError(tag, t)
+    }
+
+    fun recordError(tag: String, t: Throwable, fatal: Boolean = false) {
+        val prefix = if (fatal) "FATAL: " else ""
+        val message = t.message ?: t.javaClass.simpleName
+        recordError(tag, prefix + message, Log.getStackTraceString(t))
     }
 
     fun recordReproResponse(endpoint: String, httpCode: Int, bodySnippet: String) {
@@ -217,6 +223,33 @@ class CrashReporter(private val context: Context) {
             .putLong(KEY_AUTO_NEXT_ALLOWED_MS, now + delayMs)
             .apply()
         return false
+    }
+
+
+    suspend fun flush(
+        api: ApiService,
+        sessionId: String?,
+        connectionStatus: String,
+        serverBaseUrl: String,
+        lastExportRev: String?,
+        loadedExportRev: String?,
+        lastRevisionId: String?,
+        clientStats: Map<String, Any>
+    ): Boolean {
+        setLastExportRev(lastExportRev ?: loadedExportRev ?: lastRevisionId)
+        val queuedActions = mapOf(
+            "connection_status" to connectionStatus,
+            "server_base_url" to serverBaseUrl,
+            "loaded_export_rev" to (loadedExportRev ?: ""),
+            "last_revision_id" to (lastRevisionId ?: "")
+        )
+        return sendNow(
+            api = api,
+            sessionId = sessionId,
+            clientStats = clientStats,
+            queuedActions = queuedActions,
+            trigger = "manual_flush"
+        )
     }
 
     private fun sha256(bytes: ByteArray): String {

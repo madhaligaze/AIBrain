@@ -3,6 +3,14 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// IMPORTANT:
+// Sceneform (LightEstimationKt) calls LightEstimate.acquireEnvironmentalHdrCubeMap().
+// If an older ARCore client lib ends up in the APK, you get NoSuchMethodError at runtime.
+// Pin ARCore to a version that definitely contains this API and force it across all configs.
+
+val versionCodeValue = 1
+val versionNameValue = "1.0"
+
 android {
     namespace = "com.example.aibrain"
     compileSdk = 34
@@ -11,9 +19,8 @@ android {
         applicationId = "com.example.aibrain"
         minSdk = 27
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
-
+        versionCode = versionCodeValue
+        versionName = versionNameValue
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         val backendBaseUrl = (project.findProperty("backendBaseUrl") as String?) ?: "http://10.0.2.2:8000/"
@@ -29,17 +36,13 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-
-    buildFeatures {
-        buildConfig = true
-    }
+    kotlinOptions { jvmTarget = "1.8" }
+    buildFeatures { buildConfig = true }
 
     // Исключаем конфликтующие META-INF файлы из зависимостей AR-библиотек
     packaging {
@@ -50,8 +53,18 @@ android {
     }
 }
 
+// ВАЖНО: com.gorisse.thomas.sceneform вызывает Environmental HDR API
+// (LightEstimate.acquireEnvironmentalHdrCubeMap).
+// Если ARCore занижен/разъезжается по транзитивным зависимостям,
+// получаем NoSuchMethodError и падение на старте камеры.
+// Поэтому фиксируем одну (достаточно новую) версию ARCore для всего приложения.
+val arCoreVersion = "1.39.0"
+configurations.configureEach {
+    resolutionStrategy.force("com.google.ar:core:$arCoreVersion")
+}
 
 dependencies {
+
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
@@ -62,15 +75,16 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 
-    // ARCore
-    implementation("com.google.ar:core:1.41.0")
+    implementation("com.google.ar:core:$arCoreVersion")
 
-    // Sceneform (maintained continuation) - даёт com.google.ar.sceneform.* классы (Node/AnchorNode/Light/ArSceneView/FrameTime/Camera/...)
+    // Sceneform (maintained continuation)
     implementation("com.gorisse.thomas.sceneform:sceneform:1.23.0")
     implementation("com.gorisse.thomas.sceneform:ux:1.23.0")
+
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
     // OkHttp (timeouts/logging)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")

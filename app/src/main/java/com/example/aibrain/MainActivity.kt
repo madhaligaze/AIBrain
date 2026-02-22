@@ -391,9 +391,10 @@ class MainActivity : AppCompatActivity() {
         initViews()
         setupClickListeners()
 
-        if (!passesReleaseDeviceGate()) {
+        // Release-device gate should never hard-block dev/testing.
+        // In release builds we show a warning, but keep the app alive.
+        if (!BuildConfig.DEBUG && !passesReleaseDeviceGate()) {
             showReleaseDeviceUnsupportedDialog()
-            return
         }
 
         // Камера нужна для ARCore / рулетки.
@@ -625,7 +626,11 @@ class MainActivity : AppCompatActivity() {
         }
         val sessionOk = arManager.setupSession()
         if (!sessionOk) {
-            showError("ARCore сессия не запустилась. Убедитесь что ARCore обновлён и камера доступна.")
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.P) {
+                showError("AR требует Android 9+ (API 28+). На вашем устройстве Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT}).")
+            } else {
+                showError("ARCore сессия не запустилась. Убедитесь что ARCore обновлён и камера доступна.")
+            }
             return false
         }
         if (arManager.depthMode == Config.DepthMode.DISABLED && !depthHintShown) {
@@ -1882,7 +1887,10 @@ class MainActivity : AppCompatActivity() {
             originAnchorNode = null
             layerGlbManager?.setLayersRoot(null)
             layerGlbManager?.clearAll()
-            voxelVisualizer.setRootParent(null)
+            if (::voxelVisualizer.isInitialized) {
+                voxelVisualizer.setRootParent(null)
+                voxelVisualizer.hideVoxels()
+            }
             currentVoxelData = null
             showHint("⚠️ Origin anchor удалён. Поставь новую опору, чтобы закрепить слои")
         }
@@ -2715,8 +2723,8 @@ class MainActivity : AppCompatActivity() {
                             currentVoxelData = voxelResponse.voxels.map { v ->
                                 VoxelData(v.position, v.type, v.color, v.alpha.toFloat(), voxelResponse.resolution.toFloat(), v.radius)
                             }
-                            voxelVisualizer.setRootParent(originAnchorNode)
-                            voxelVisualizer.showVoxels(currentVoxelData!!)
+                            if (::voxelVisualizer.isInitialized) voxelVisualizer.setRootParent(originAnchorNode)
+                            if (::voxelVisualizer.isInitialized) voxelVisualizer.showVoxels(currentVoxelData!!)
                         }
                     }
                 }
@@ -3343,7 +3351,12 @@ class MainActivity : AppCompatActivity() {
         userMarkers.clear()
         originAnchorNode = null
         layerGlbManager?.setLayersRoot(null)
-        voxelVisualizer.setRootParent(null)
+        // Can happen if activity is destroyed before voxelVisualizer init completes
+        // (or if AR crashed during early startup). Never crash in onDestroy().
+        if (::voxelVisualizer.isInitialized) {
+            voxelVisualizer.setRootParent(null)
+            voxelVisualizer.hideVoxels()
+        }
         updatePointsCount()
         btnAnalyze.isEnabled = false
         sceneBuilder.clearScene()
@@ -3382,13 +3395,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun showReleaseDeviceUnsupportedDialog() {
         AlertDialog.Builder(this)
-            .setTitle("Устройство не подходит для AR релиза")
+            .setTitle("Предупреждение")
             .setMessage(
-                "Для стабильной AR-работы нужен совместимый ARCore смартфон уровня флагмана: " +
-                    "Android 10+, минимум 6 ГБ RAM и современный GPU/камера."
+                "Этот билд рассчитан на ARCore-совместимые устройства (обычно Android 10+ и >=6ГБ RAM). " +
+                    "Если ARCore на устройстве работает (другие AR-приложения запускаются) - можно продолжать; " +
+                    "это предупреждение не должно блокировать тестирование."
             )
             .setCancelable(false)
-            .setPositiveButton("Закрыть") { _, _ -> finish() }
+            .setPositiveButton("Продолжить") { _, _ -> /* no-op */ }
+            .setNegativeButton("Закрыть") { _, _ -> finish() }
             .show()
     }
 
