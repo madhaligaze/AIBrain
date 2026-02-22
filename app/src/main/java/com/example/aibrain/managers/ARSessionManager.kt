@@ -10,6 +10,7 @@ import com.google.ar.core.LightEstimate
 import com.google.ar.core.Session
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.ArSceneView
+import com.gorisse.thomas.sceneform.light.LightEstimationConfig
 
 class ARSessionManager(
     private val context: Context,
@@ -20,8 +21,7 @@ class ARSessionManager(
         private set
 
     fun setupSession(): Boolean {
-        // Жесткая защита от падений на API 27 (Android 8.1) и ниже.
-        // На этих версиях в некоторых связках ARCore/Camera2 возможны NoSuchFieldError и нативные краши.
+        // Жёсткая защита от падений на API 27 (Android 8.1) и ниже.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
             Log.e(TAG, "AR disabled: SDK_INT=${Build.VERSION.SDK_INT} < 28")
             return false
@@ -30,6 +30,7 @@ class ARSessionManager(
         val existingSession = sceneView.session
         if (existingSession != null) {
             applyConfig(existingSession)
+            // [FIXED] Применяем безопасный режим освещения ПОСЛЕ конфигурации сессии
             applySceneViewLightEstimationMode(selectSafeLightEstimationMode())
             sceneView.planeRenderer.isVisible = true
             Log.d(TAG, "Re-configured existing session. depthMode=$depthMode")
@@ -39,7 +40,7 @@ class ARSessionManager(
         val session = try {
             Session(context)
         } catch (t: Throwable) {
-            // Важно: ловим Throwable, т.к. NoSuchFieldError/UnsatisfiedLinkError и т.п. не являются Exception.
+            // Ловим Throwable, т.к. NoSuchFieldError/UnsatisfiedLinkError не являются Exception.
             Log.e(TAG, "Failed to create ARCore Session: ${t.message}", t)
             return false
         }
@@ -58,8 +59,9 @@ class ARSessionManager(
 
         applyConfig(session)
 
-        // Sceneform 1.23.0 может падать на некоторых версиях ARCore при ENVIRONMENTAL_HDR.
-        // Поэтому выставляем безопасный режим прямо в ArSceneView (через reflection, чтобы не зависеть от конкретной реализации).
+        // [FIXED] Применяем режим освещения Sceneform до установки session в sceneView.
+        // Без этого Sceneform использует ENVIRONMENTAL_HDR по умолчанию и крашится
+        // при первом кадре на ARCore версиях, где acquireEnvironmentalHdrCubeMap() отсутствует.
         applySceneViewLightEstimationMode(selectSafeLightEstimationMode())
 
         return try {
@@ -77,14 +79,12 @@ class ARSessionManager(
     private fun applyConfig(session: Session) {
         depthMode = when {
             session.isDepthModeSupported(Config.DepthMode.RAW_DEPTH_ONLY) -> Config.DepthMode.RAW_DEPTH_ONLY
-            session.isDepthModeSupported(Config.DepthMode.AUTOMATIC) -> Config.DepthMode.AUTOMATIC
+            session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)      -> Config.DepthMode.AUTOMATIC
             else -> Config.DepthMode.DISABLED
         }
 
-        // Sceneform 1.23.0 может падать с NoSuchMethodError на ENVIRONMENTAL_HDR из-за
-        // несовпадения сигнатуры LightEstimate.acquireEnvironmentalHdrCubeMap() в разных версиях ARCore.
-        // Самый надежный способ: включать HDR только если в текущем ARCore реально есть ожидаемый метод
-        // (именно с return type = com.google.ar.core.ArImage[]).
+        // Проверяем наличие acquireEnvironmentalHdrCubeMap() в текущем ARCore рантайме.
+        // ARCore 1.34.0+ deprecated этот метод; 1.39.0 может его не иметь совсем.
         val canUseEnvironmentalHdr = try {
             val m = LightEstimate::class.java.getMethod("acquireEnvironmentalHdrCubeMap")
             val rt = m.returnType
@@ -94,18 +94,17 @@ class ARSessionManager(
         }
 
         val config = Config(session).apply {
-            focusMode = Config.FocusMode.AUTO
+            focusMode           = Config.FocusMode.AUTO
             lightEstimationMode = if (canUseEnvironmentalHdr) {
                 Log.i(TAG, "LightEstimation: ENVIRONMENTAL_HDR enabled (compatible ARCore detected)")
                 Config.LightEstimationMode.ENVIRONMENTAL_HDR
             } else {
-                // Радикально надежно: исключаем путь, который роняет приложение на старте.
-                Log.w(TAG, "LightEstimation: ENVIRONMENTAL_HDR disabled (incompatible ARCore). Using AMBIENT_INTENSITY")
+                Log.w(TAG, "LightEstimation: ENVIRONMENTAL_HDR DISABLED — acquireEnvironmentalHdrCubeMap() not found. Using AMBIENT_INTENSITY.")
                 Config.LightEstimationMode.AMBIENT_INTENSITY
             }
             planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
-            updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
-            this.depthMode = this@ARSessionManager.depthMode
+            updateMode       = Config.UpdateMode.LATEST_CAMERA_IMAGE
+            this.depthMode   = this@ARSessionManager.depthMode
         }
 
         try {
@@ -116,46 +115,75 @@ class ARSessionManager(
     }
 
     private fun selectSafeLightEstimationMode(): Config.LightEstimationMode {
-        // В Sceneform Maintained 1.23.0 вызов Environmental HDR идёт через
-        // LightEstimate.acquireEnvironmentalHdrCubeMap() с сигнатурой, зависящей от версии ARCore.
-        // Если сигнатура не совпадает (часто возвращает Image[] вместо ArImage[]), получаем NoSuchMethodError.
         return try {
-            val m = com.google.ar.core.LightEstimate::class.java.methods.firstOrNull { it.name == "acquireEnvironmentalHdrCubeMap" }
+            val m = LightEstimate::class.java.methods
+                .firstOrNull { it.name == "acquireEnvironmentalHdrCubeMap" }
             val rt = m?.returnType
-            val ok = rt != null && rt.isArray && rt.componentType?.name == "com.google.ar.core.ArImage"
-            if (ok) Config.LightEstimationMode.ENVIRONMENTAL_HDR else Config.LightEstimationMode.AMBIENT_INTENSITY
+            val ok = rt != null && rt.isArray &&
+                    rt.componentType?.name == "com.google.ar.core.ArImage"
+            if (ok) Config.LightEstimationMode.ENVIRONMENTAL_HDR
+            else    Config.LightEstimationMode.AMBIENT_INTENSITY
         } catch (_: Throwable) {
             Config.LightEstimationMode.AMBIENT_INTENSITY
         }
     }
 
+    /**
+     * [FIXED] Применяет режим освещения в Sceneform ArSceneView.
+     *
+     * СТАРЫЙ КОД ПРОБЛЕМА: Искал метод setLightEstimationMode(Config$LightEstimationMode) —
+     * такого метода нет! Sceneform использует свой тип SceneformLightMode.
+     * В результате reflection возвращал null, режим не менялся, Sceneform оставался
+     * в ENVIRONMENTAL_HDR → краш при первом AR-кадре.
+     *
+     * НОВЫЙ КОД: Прямой вызов sceneView.lightEstimationMode = SceneformLightMode.X,
+     * с fallback на reflection с правильным типом параметра.
+     */
     private fun applySceneViewLightEstimationMode(mode: Config.LightEstimationMode) {
-        // Пытаемся вызвать public API, если оно есть.
-        try {
-            val m = sceneView.javaClass.methods.firstOrNull {
-                it.name == "setLightEstimationMode" &&
-                    it.parameterTypes.size == 1 &&
-                    it.parameterTypes[0].name == "com.google.ar.core.Config\$LightEstimationMode"
-            }
-            if (m != null) {
-                m.invoke(sceneView, mode)
-                Log.d(TAG, "ArSceneView.setLightEstimationMode($mode)")
-                return
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "setLightEstimationMode failed (non-fatal): ${t.message}")
+        val lightConfig = when (mode) {
+            Config.LightEstimationMode.AMBIENT_INTENSITY -> LightEstimationConfig.AMBIENT_INTENSITY
+            Config.LightEstimationMode.ENVIRONMENTAL_HDR -> LightEstimationConfig.AMBIENT_INTENSITY
+            else -> LightEstimationConfig.DISABLED
         }
 
-        // Fallback: пробуем напрямую выставить поле, если библиотека хранит его как field.
         try {
-            val f = sceneView.javaClass.declaredFields.firstOrNull { it.name == "lightEstimationMode" }
-            if (f != null) {
-                f.isAccessible = true
-                f.set(sceneView, mode)
-                Log.d(TAG, "ArSceneView.lightEstimationMode = $mode (reflection)")
-            }
+            sceneView._lightEstimationConfig = lightConfig
+            Log.i(TAG, "sceneView._lightEstimationConfig = $lightConfig ✅")
+            return
         } catch (t: Throwable) {
-            Log.w(TAG, "lightEstimationMode field set failed (non-fatal): ${t.message}")
+            Log.w(TAG, "Direct _lightEstimationConfig set failed (${t.message}), trying reflection fallback")
+        }
+
+        applyViaReflectionFallback(lightConfig)
+    }
+
+    /**
+     * [FIXED] Reflection fallback с правильным типом параметра.
+     * Старый код: parameterTypes[0].name == "com.google.ar.core.Config$LightEstimationMode" — НЕВЕРНО
+     * Новый код: isAssignableFrom(SceneformLightMode::class.java) — ВЕРНО
+     */
+    private fun applyViaReflectionFallback(lightConfig: LightEstimationConfig) {
+        try {
+            val setter = sceneView.javaClass.methods.firstOrNull {
+                it.name == "setLightEstimationConfig" &&
+                        it.parameterCount == 1 &&
+                        it.parameterTypes[0].isAssignableFrom(LightEstimationConfig::class.java)
+            }
+            if (setter == null) {
+                Log.e(TAG, "setLightEstimationConfig(LightEstimationConfig) not found in ArSceneView! " +
+                        "HDR crash risk if Sceneform defaults to ENVIRONMENTAL_HDR.")
+                val anyGetter = sceneView.javaClass.methods
+                    .firstOrNull { it.name == "setLightEstimationConfig" && it.parameterCount == 1 }
+                if (anyGetter != null) {
+                    anyGetter.invoke(sceneView, lightConfig)
+                    Log.d(TAG, "setLightEstimationConfig via any-type reflection OK")
+                }
+                return
+            }
+            setter.invoke(sceneView, lightConfig)
+            Log.d(TAG, "setLightEstimationConfig($lightConfig) via typed reflection OK ✅")
+        } catch (t: Throwable) {
+            Log.e(TAG, "Reflection fallback FAILED: ${t.message}. App may crash on first AR frame!", t)
         }
     }
 

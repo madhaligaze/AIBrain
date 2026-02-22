@@ -919,38 +919,38 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun doLockSession(sid: String, option: ScaffoldOption) {
         lockExportMutex.withLock {
-        val measurementsJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
-        val measurementConstraints = runCatching {
-            if (::arRuler.isInitialized) {
-                arRuler.getSavedMeasurements().map { m ->
-                    MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp)
+            val measurementsJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
+            val measurementConstraints = runCatching {
+                if (::arRuler.isInitialized) {
+                    arRuler.getSavedMeasurements().map { m ->
+                        MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp)
+                    }
+                } else emptyList()
+            }.getOrDefault(emptyList())
+
+            val lockPayload = LockPayload(
+                session_id = sid,
+                selected_variant = option.variant_name,
+                measurements_json = measurementsJson.ifBlank { null },
+                manual_measurements = measurementConstraints
+            )
+            try {
+                val resp = api.lockSession(lockPayload)
+                if (resp.isSuccessful && resp.body() != null) {
+                    lastRevisionId = resp.body()!!.rev_id
+                    return
                 }
-            } else emptyList()
-        }.getOrDefault(emptyList())
-
-        val lockPayload = LockPayload(
-            session_id = sid,
-            selected_variant = option.variant_name,
-            measurements_json = measurementsJson.ifBlank { null },
-            manual_measurements = measurementConstraints
-        )
-        try {
-            val resp = api.lockSession(lockPayload)
-            if (resp.isSuccessful && resp.body() != null) {
-                lastRevisionId = resp.body()!!.rev_id
-                return
+                offlineQueue.enqueueLock(sid, getCurrentServerUrl())
+                crashReporter.recordError("lockSession", IllegalStateException("HTTP ${resp.code()}"))
+            } catch (e: Exception) {
+                offlineQueue.enqueueLock(sid, getCurrentServerUrl())
+                crashReporter.recordError("lockSession", e)
             }
-            offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordError("lockSession", IllegalStateException("HTTP ${resp.code()}"))
-        } catch (e: Exception) {
-            offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordError("lockSession", e)
-        }
 
-        runCatching { api.exportLatest(sid) }.onSuccess { exp ->
-            val rev = exp.body()?.revision_id ?: exp.body()?.rev_id.orEmpty()
-            if (rev.isNotBlank()) lastRevisionId = rev
-        }
+            runCatching { api.exportLatest(sid) }.onSuccess { exp ->
+                val rev = exp.body()?.revision_id ?: exp.body()?.rev_id.orEmpty()
+                if (rev.isNotBlank()) lastRevisionId = rev
+            }
         }
     }
 
@@ -1379,6 +1379,8 @@ class MainActivity : AppCompatActivity() {
     // ══════════════════════════════════════════════════════════════════════
 
     private fun toggleRulerMode() {
+        if (!::arRuler.isInitialized) return
+
         rulerMode = !rulerMode
 
         if (rulerMode) {
@@ -1720,9 +1722,9 @@ class MainActivity : AppCompatActivity() {
 
         tvReadinessDetail.text =
             "OBS ${obsPct}% | VDIV ${vdiv}/${minViews} | VP ${vp}/${minVp}" +
-                (if (ready == true) " | READY" else "") +
-                netSuffix +
-                pollSuffix
+                    (if (ready == true) " | READY" else "") +
+                    netSuffix +
+                    pollSuffix
 
         val colorRes =
             if (ready == true) android.R.color.holo_green_light else android.R.color.holo_orange_light
@@ -3398,8 +3400,8 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Предупреждение")
             .setMessage(
                 "Этот билд рассчитан на ARCore-совместимые устройства (обычно Android 10+ и >=6ГБ RAM). " +
-                    "Если ARCore на устройстве работает (другие AR-приложения запускаются) - можно продолжать; " +
-                    "это предупреждение не должно блокировать тестирование."
+                        "Если ARCore на устройстве работает (другие AR-приложения запускаются) - можно продолжать; " +
+                        "это предупреждение не должно блокировать тестирование."
             )
             .setCancelable(false)
             .setPositiveButton("Продолжить") { _, _ -> /* no-op */ }
