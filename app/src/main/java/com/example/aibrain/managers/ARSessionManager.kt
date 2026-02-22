@@ -1,6 +1,7 @@
 package com.example.aibrain.managers
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import com.google.ar.core.Anchor
 import com.google.ar.core.CameraConfigFilter
@@ -18,6 +19,13 @@ class ARSessionManager(
         private set
 
     fun setupSession(): Boolean {
+        // Жесткая защита от падений на API 27 (Android 8.1) и ниже.
+        // На этих версиях в некоторых связках ARCore/Camera2 возможны NoSuchFieldError и нативные краши.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            Log.e(TAG, "AR disabled: SDK_INT=${Build.VERSION.SDK_INT} < 28")
+            return false
+        }
+
         val existingSession = sceneView.session
         if (existingSession != null) {
             applyConfig(existingSession)
@@ -28,8 +36,9 @@ class ARSessionManager(
 
         val session = try {
             Session(context)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create ARCore Session: ${e.message}", e)
+        } catch (t: Throwable) {
+            // Важно: ловим Throwable, т.к. NoSuchFieldError/UnsatisfiedLinkError и т.п. не являются Exception.
+            Log.e(TAG, "Failed to create ARCore Session: ${t.message}", t)
             return false
         }
 
@@ -41,8 +50,8 @@ class ARSessionManager(
                 session.cameraConfig = best
                 Log.d(TAG, "CameraConfig: ${best.imageSize} @ ${best.fpsRange} FPS")
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "CameraConfig selection failed (non-fatal): ${e.message}")
+        } catch (t: Throwable) {
+            Log.w(TAG, "CameraConfig selection failed (non-fatal): ${t.message}")
         }
 
         applyConfig(session)
@@ -52,8 +61,8 @@ class ARSessionManager(
             sceneView.planeRenderer.isVisible = true
             Log.i(TAG, "ARCore Session created. depthMode=$depthMode")
             true
-        } catch (e: Exception) {
-            Log.e(TAG, "sceneView.session assignment failed: ${e.message}", e)
+        } catch (t: Throwable) {
+            Log.e(TAG, "sceneView.session assignment failed: ${t.message}", t)
             session.close()
             false
         }
@@ -76,8 +85,8 @@ class ARSessionManager(
 
         try {
             session.configure(config)
-        } catch (e: Exception) {
-            Log.e(TAG, "session.configure() failed: ${e.message}", e)
+        } catch (t: Throwable) {
+            Log.e(TAG, "session.configure() failed: ${t.message}", t)
         }
     }
 
