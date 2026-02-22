@@ -31,11 +31,13 @@ class CrashReporter(private val context: Context) {
     }
 
     fun recordError(tag: String, message: String, stack: String? = null) {
+        val safeMsg = ReportSanitizer.sanitizeText(message, maxLen = 512)
+        val safeStack = stack?.let { ReportSanitizer.sanitizeText(it, maxLen = 8000) }
         val item = ClientErrorItem(
             timestamp_ms = System.currentTimeMillis(),
             tag = tag.take(64),
-            message = message.take(512),
-            stack = stack?.take(8000)
+            message = safeMsg,
+            stack = safeStack
         )
         while (errors.size >= MAX_ERRORS) errors.removeFirst()
         errors.addLast(item)
@@ -47,11 +49,12 @@ class CrashReporter(private val context: Context) {
     }
 
     fun recordReproResponse(endpoint: String, httpCode: Int, bodySnippet: String) {
+        val safeBody = ReportSanitizer.sanitizeText(bodySnippet, maxLen = MAX_SNIPPET)
         val item = ClientReproItem(
             timestamp_ms = System.currentTimeMillis(),
             endpoint = endpoint.take(64),
             http_code = httpCode,
-            body_snippet = bodySnippet.take(MAX_SNIPPET),
+            body_snippet = safeBody,
             error_snippet = null
         )
         while (repro.size >= MAX_REPRO) repro.removeFirst()
@@ -60,12 +63,13 @@ class CrashReporter(private val context: Context) {
     }
 
     fun recordReproError(endpoint: String, httpCode: Int? = null, errorSnippet: String? = null) {
+        val safeErr = ReportSanitizer.sanitizeText(errorSnippet ?: "", maxLen = MAX_SNIPPET)
         val item = ClientReproItem(
             timestamp_ms = System.currentTimeMillis(),
             endpoint = endpoint.take(64),
             http_code = httpCode,
             body_snippet = null,
-            error_snippet = (errorSnippet ?: "").take(MAX_SNIPPET)
+            error_snippet = safeErr
         )
         while (repro.size >= MAX_REPRO) repro.removeFirst()
         repro.addLast(item)

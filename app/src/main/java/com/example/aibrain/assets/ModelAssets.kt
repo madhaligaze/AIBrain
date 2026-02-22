@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.google.ar.sceneform.rendering.ModelRenderable
+import com.google.ar.sceneform.rendering.RenderableSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -87,12 +88,17 @@ object ModelAssets {
         // Sceneform: asset URIs must use "file:///android_asset/"
         val assetUri = Uri.parse("file:///android_asset/$assetPath")
 
+        val source = RenderableSource.builder()
+            .setSource(context, assetUri, RenderableSource.SourceType.GLB)
+            .setRecenterMode(RenderableSource.RecenterMode.ROOT)
+            .build()
+
         ModelRenderable.builder()
-            .setSource(context, assetUri)
+            .setSource(context, source)
             .setIsFilamentGltf(true)
             .build()
-            .thenAccept { renderable: ModelRenderable -> deferred.complete(renderable) }
-            .exceptionally { throwable: Throwable ->
+            .thenAccept { renderable -> deferred.complete(renderable) }
+            .exceptionally { throwable ->
                 deferred.completeExceptionally(throwable)
                 null
             }

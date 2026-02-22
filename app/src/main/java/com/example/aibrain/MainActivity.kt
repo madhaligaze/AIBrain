@@ -73,6 +73,7 @@ import kotlin.math.min
 import com.example.aibrain.measurement.ARRuler
 import com.example.aibrain.offline.OfflineQueue
 import com.example.aibrain.diagnostics.CrashReporter
+import com.example.aibrain.diagnostics.ReportSanitizer
 import com.example.aibrain.util.HeavyOps
 import com.example.aibrain.measurement.MeasurementType
 import com.example.aibrain.measurement.Measurement
@@ -273,6 +274,11 @@ class MainActivity : AppCompatActivity() {
     private var lastReadinessReady: Boolean? = null
     private var lastReadinessScore: Double? = null
     private var lastReadinessMetrics: ReadinessMetrics? = null
+    private var lastReadinessReasons: List<String> = emptyList()
+    private var lastReadinessHintsHash: String? = null
+    private var lastReadinessHintsAtMs: Long = 0L
+    private var lastCompatHintsHash: String? = null
+    private var lastCompatHintsAtMs: Long = 0L
     private var nextStreamAttemptAtMs: Long = 0L
     private var exportPollJob: Job? = null
     private var readinessPollJob: Job? = null
@@ -311,7 +317,8 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            startArIfReady()
+            // Не стартуем AR прямо тут (на API 27 это может привести к падению до install-check).
+            // Пусть onResume безопасно сделает install-check и запустит AR при возможности.
         } else {
             showError("Нет доступа к камере. AR и рулетка недоступны.")
         }
@@ -365,7 +372,7 @@ class MainActivity : AppCompatActivity() {
 
         val prevHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            runCatching { crashReporter.recordException("UNCAUGHT:${t.name}", e) }
+            runCatching { crashReporter.recordError("UNCAUGHT:${t.name}", e, fatal = true) }
             runCatching {
                 val body = buildString {
                     append(System.currentTimeMillis())
@@ -385,13 +392,13 @@ class MainActivity : AppCompatActivity() {
         setupClickListeners()
 
         if (!passesReleaseDeviceGate()) {
-            showReleaseDeviceCompatibilityWarning()
+            showReleaseDeviceUnsupportedDialog()
+            return
         }
 
-        // Camera permission is required for ARCore / ruler.
-        if (hasCameraPermission()) {
-            startArIfReady()
-        } else {
+        // Камера нужна для ARCore / рулетки.
+        // Важно: не запускаем AR здесь, чтобы не падать на API 27 до проверок ARCore в onResume().
+        if (!hasCameraPermission()) {
             requestCameraPermission()
         }
         sceneBuilder = SceneBuilder(sceneView)
@@ -537,6 +544,66 @@ class MainActivity : AppCompatActivity() {
         tvAccuracy = findViewById(R.id.tv_accuracy)
     }
 
+
+
+    private fun ensureArCoreReadyOrExplain(): Boolean {
+        // 1) API 27: не падаем, просто показываем сообщение и отключаем AR.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("AR требует Android 9 (API 28)+. На этом устройстве AR отключен.")
+            }
+            return false
+        }
+
+        // 2) Проверка поддержки ARCore на устройстве.
+        val availability = try {
+            ArCoreApk.getInstance().checkAvailability(this)
+        } catch (t: Throwable) {
+            Log.e("MainActivity", "ARCore availability check failed: ${t.message}", t)
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("ARCore недоступен. Проверьте Google Play Services for AR.")
+            }
+            return false
+        }
+
+        // Иногда состояние transient - это нормально (ARCore еще "думает"). Не спамим ошибками, просто ждём следующий onResume.
+        if (availability.isTransient) {
+            Log.d("MainActivity", "ARCore availability is transient: $availability")
+            return false
+        }
+
+        if (!availability.isSupported) {
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("ARCore не поддерживается на этом устройстве.")
+            }
+            return false
+        }
+
+        // 3) Установка/обновление ARCore (Google Play Services for AR).
+        try {
+            when (ArCoreApk.getInstance().requestInstall(this, !arCoreInstallRequested)) {
+                ArCoreApk.InstallStatus.INSTALL_REQUESTED -> {
+                    arCoreInstallRequested = true
+                    return false
+                }
+                ArCoreApk.InstallStatus.INSTALLED -> {
+                    // continue
+                }
+            }
+        } catch (t: Throwable) {
+            Log.e("MainActivity", "ARCore install/request failed: ${t.message}", t)
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("ARCore не установлен/недоступен. Установите Google Play Services for AR.")
+            }
+            return false
+        }
+
+        return true
+    }
 
     private fun startArIfReady() {
         if (!::sceneView.isInitialized) return
@@ -869,10 +936,10 @@ class MainActivity : AppCompatActivity() {
                 return
             }
             offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordError("lockSession", "HTTP ${resp.code()}")
+            crashReporter.recordError("lockSession", IllegalStateException("HTTP ${resp.code()}"))
         } catch (e: Exception) {
             offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-            crashReporter.recordException("lockSession", e)
+            crashReporter.recordError("lockSession", e)
         }
 
         runCatching { api.exportLatest(sid) }.onSuccess { exp ->
@@ -1221,12 +1288,15 @@ class MainActivity : AppCompatActivity() {
             lockExportMutex.withLock {
                 offlineQueue.flushForSession(api, sessionId, baseUrl)
             }
-            crashReporter.sendNow(
+            crashReporter.flush(
                 api = api,
                 sessionId = sessionId,
-                clientStats = buildClientStats(),
-                queuedActions = buildQueuedActionsForReport(),
-                trigger = "flush"
+                connectionStatus = currentConnStatus.name,
+                serverBaseUrl = baseUrl,
+                lastExportRev = lastRevisionId,
+                loadedExportRev = loadedExportRevId,
+                lastRevisionId = lastRevisionId,
+                clientStats = buildClientStats()
             )
             netState.reportResult(tag = "flush", success = true, baseMs = 20_000L, maxMs = 60_000L)
         } catch (e: Exception) {
@@ -1289,12 +1359,12 @@ class MainActivity : AppCompatActivity() {
                 true
             } else {
                 offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
-                crashReporter.recordError("postAnchors", "HTTP ${resp.code()}")
+                crashReporter.recordError("postAnchors", IllegalStateException("HTTP ${resp.code()}"))
                 false
             }
         } catch (e: Exception) {
             offlineQueue.enqueueAnchors(sid, getCurrentServerUrl(), anchors)
-            crashReporter.recordException("postAnchors", e)
+            crashReporter.recordError("postAnchors", e)
             false
         }
     }
@@ -1653,6 +1723,117 @@ class MainActivity : AppCompatActivity() {
             if (ready == true) android.R.color.holo_green_light else android.R.color.holo_orange_light
         pbReadiness.progressTintList =
             android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, colorRes))
+    }
+
+    private fun maybeEmitReadinessHints(
+        ready: Boolean?,
+        reasons: List<String>?,
+        metrics: ReadinessMetrics?
+    ) {
+        if (ready == true) return
+        if (metrics == null) return
+        val r = reasons.orEmpty()
+
+        // Cooldown to avoid HUD spam on polling.
+        val now = System.currentTimeMillis()
+        if (now - lastReadinessHintsAtMs < 15000L) return
+
+        val hints = mutableListOf<String>()
+
+        for (rs in r) {
+            when {
+                rs.startsWith("LOW_VIEWPOINTS") -> {
+                    val vp = metrics.viewpoints
+                    val minVp = metrics.min_viewpoints
+                    hints.add("📍 Нужно больше ракурсов: VP ${vp}/${minVp}")
+                }
+                rs.startsWith("LOW_VIEW_DIVERSITY") -> {
+                    val vd = metrics.view_diversity
+                    val minVd = metrics.min_views_per_anchor
+                    hints.add("📍 Обойди опоры по кругу: VDIV ${vd}/${minVd}")
+                }
+                rs.startsWith("LOW_OBSERVED_RATIO") -> {
+                    val obs = ((metrics.observed_ratio) * 100.0).toInt()
+                    val minObs = ((metrics.min_observed_ratio) * 100.0).toInt()
+                    hints.add("📍 Мало покрытия: OBS ${obs}% (min ${minObs}%)")
+                }
+                rs == "EMPTY_WORLD" || rs == "EMPTY_AABB" -> {
+                    hints.add("📍 Нет данных скана: подвигайся и досканируй область")
+                }
+                rs == "NO_FRAMES" -> {
+                    hints.add("📍 Нет кадров: включи стрим и подержи камеру на сцене")
+                }
+            }
+        }
+
+        if (hints.isEmpty()) return
+        val hash = hints.joinToString("|")
+        if (hash == lastReadinessHintsHash && now - lastReadinessHintsAtMs < 45000L) return
+        lastReadinessHintsHash = hash
+        lastReadinessHintsAtMs = now
+
+        // Only show up to 2 hints at once.
+        hints.take(2).forEach { showHint(it) }
+    }
+
+    private suspend fun maybeFetchCompatWarnings(sessionId: String) {
+        if (lastReadinessReady != false) return
+        val now = System.currentTimeMillis()
+        if (now - lastCompatHintsAtMs < 20000L) return
+
+        val resp = withTimeoutOrNull(1500L) {
+            api.requestScaffoldCompat(sessionId)
+        } ?: return
+
+        if (!resp.isSuccessful || resp.body() == null) {
+            crashReporter.recordReproError(
+                endpoint = "/session/" + sessionId + "/request_scaffold",
+                httpCode = resp.code(),
+                errorSnippet = "request_scaffold failed: ${resp.code()}"
+            )
+            return
+        }
+
+        val body = resp.body()!!
+
+        crashReporter.recordReproResponse(
+            endpoint = "/session/" + sessionId + "/request_scaffold",
+            httpCode = resp.code(),
+            bodySnippet = ReportSanitizer.sanitizeReproBody("/session/" + sessionId + "/request_scaffold", body)
+        )
+
+        val warnings = runCatching { body.getAsJsonObject("compat_warnings") }.getOrNull()
+        val scanPlan = runCatching { warnings?.getAsJsonArray("scan_plan") }.getOrNull()
+        val reasons = runCatching { warnings?.getAsJsonArray("reasons") }.getOrNull()
+
+        val plan = mutableListOf<String>()
+        if (scanPlan != null) {
+            for (i in 0 until minOf(3, scanPlan.size())) {
+                val s = runCatching { scanPlan[i].asString }.getOrNull().orEmpty()
+                if (s.isNotBlank()) plan.add(ReportSanitizer.sanitizeText(s, maxLen = 160))
+            }
+        }
+        val rs = mutableListOf<String>()
+        if (reasons != null) {
+            for (i in 0 until minOf(3, reasons.size())) {
+                val s = runCatching { reasons[i].asString }.getOrNull().orEmpty()
+                if (s.isNotBlank()) rs.add(ReportSanitizer.sanitizeText(s, maxLen = 64))
+            }
+        }
+
+        val hints = mutableListOf<String>()
+        if (plan.isNotEmpty()) hints.add("📍 Досканируй: " + plan.joinToString(" | "))
+        if (rs.isNotEmpty()) hints.add("⚠️ Readiness: " + rs.joinToString(", "))
+        if (hints.isEmpty()) return
+
+        val hash = hints.joinToString("|")
+        if (hash == lastCompatHintsHash && now - lastCompatHintsAtMs < 60000L) return
+        lastCompatHintsHash = hash
+        lastCompatHintsAtMs = now
+
+        withContext(Dispatchers.Main) {
+            hints.take(2).forEach { showHint(it) }
+        }
     }
 
     private fun maybeShowTutorial() {
@@ -2088,7 +2269,7 @@ class MainActivity : AppCompatActivity() {
                     crashReporter.recordReproResponse(
                         endpoint = "/session/" + sessionId + "/export/latest",
                         httpCode = resp.code(),
-                        bodySnippet = safeJsonSnippet(bundle)
+                        bodySnippet = ReportSanitizer.sanitizeReproBody("/session/" + sessionId + "/export/latest", bundle)
                     )
 
                     val nextAt = netState.reportResult(tag = "export_latest", success = true, baseMs = 6500L, maxMs = 30_000L)
@@ -2202,13 +2383,15 @@ class MainActivity : AppCompatActivity() {
                     lastReadinessReady = body.ready
                     lastReadinessScore = body.score
                     lastReadinessMetrics = body.readiness_metrics
+                    lastReadinessReasons = body.reasons
                     updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
+                    maybeEmitReadinessHints(body.ready, body.reasons, body.readiness_metrics)
                 }
 
                 crashReporter.recordReproResponse(
                     endpoint = "/session/" + sessionId + "/readiness",
                     httpCode = resp.code(),
-                    bodySnippet = safeJsonSnippet(body)
+                    bodySnippet = ReportSanitizer.sanitizeReproBody("/session/" + sessionId + "/readiness", body)
                 )
 
                 val nextAt = netState.reportResult(tag = "readiness", success = true, baseMs = 1500L, maxMs = 12_000L)
@@ -2218,9 +2401,6 @@ class MainActivity : AppCompatActivity() {
                     val st = netState.getStatus()
                     currentConnStatus = st
                     viewModel.setConnectionState(st, getCurrentServerUrl().trimEnd('/'))
-                    lastReadinessReady = body.ready
-                    lastReadinessScore = body.score
-                    lastReadinessMetrics = body.readiness_metrics
                     updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
                 }
             }
@@ -2458,14 +2638,21 @@ class MainActivity : AppCompatActivity() {
             api.streamData(sid, payload)
         } catch (e: Exception) {
             crashReporter.recordException("streamData", e)
-            crashReporter.recordReproError(endpoint = "/session/" + sid + "/stream", errorSnippet = (e.message ?: "exception").take(2048))
+            crashReporter.recordReproError(
+                endpoint = "/session/" + sid + "/stream",
+                errorSnippet = ReportSanitizer.sanitizeText(e.message ?: "exception", maxLen = 2048)
+            )
             return false
         }
 
         if (!resp.isSuccessful) {
             val errSnippet = runCatching { resp.errorBody()?.string() }.getOrNull()?.take(2048)
             crashReporter.recordError("streamData", "HTTP ${resp.code()}")
-            crashReporter.recordReproError(endpoint = "/session/" + sid + "/stream", httpCode = resp.code(), errorSnippet = (errSnippet ?: ("HTTP " + resp.code())).take(2048))
+            crashReporter.recordReproError(
+                endpoint = "/session/" + sid + "/stream",
+                httpCode = resp.code(),
+                errorSnippet = ReportSanitizer.sanitizeText(errSnippet ?: ("HTTP " + resp.code()), maxLen = 2048)
+            )
             return false
         }
 
@@ -2575,6 +2762,9 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) {
             // Ignore
         }
+
+        // Optional: ask compat endpoint for scan_plan hints when readiness isn't met.
+        runCatching { maybeFetchCompatWarnings(sid) }
 
         val response = try {
             if (measurementsJson.isNotBlank() || measurementConstraints.isNotEmpty()) api.startModelingWithMeasurements(sid, ModelingWithMeasurementsPayload(measurementsJson, measurementConstraints)) else api.startModeling(sid)
@@ -3190,14 +3380,15 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    private fun showReleaseDeviceCompatibilityWarning() {
+    private fun showReleaseDeviceUnsupportedDialog() {
         AlertDialog.Builder(this)
-            .setTitle("Рекомендация по устройству")
+            .setTitle("Устройство не подходит для AR релиза")
             .setMessage(
-                "Приложение будет запущено, но наиболее корректно AR-режим работает на совместимых " +
-                    "с ARCore смартфонах с Android 10+, минимум 6 ГБ RAM и современным GPU/камерой."
+                "Для стабильной AR-работы нужен совместимый ARCore смартфон уровня флагмана: " +
+                    "Android 10+, минимум 6 ГБ RAM и современный GPU/камера."
             )
-            .setPositiveButton("Понятно", null)
+            .setCancelable(false)
+            .setPositiveButton("Закрыть") { _, _ -> finish() }
             .show()
     }
 
@@ -3221,34 +3412,22 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Ensure ARCore is installed / updated.
-        try {
-            when (ArCoreApk.getInstance().requestInstall(this, !arCoreInstallRequested)) {
-                ArCoreApk.InstallStatus.INSTALL_REQUESTED -> {
-                    arCoreInstallRequested = true
-                    return
-                }
-
-                ArCoreApk.InstallStatus.INSTALLED -> {
-                    // continue
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "ARCore install/request failed: ${e.message}", e)
-            if (!arcoreHintShown) {
-                arcoreHintShown = true
-                showError("ARCore не установлен или не поддерживается.")
-            }
+        // API 27: не падаем, показываем ошибку и живём дальше.
+        // Samsung/реальные девайсы: если ARCore отсутствует/недоступен - показываем ошибку и не стартуем камеру/сцену.
+        if (!ensureArCoreReadyOrExplain()) {
             return
         }
 
         startArIfReady()
 
-        try {
-            sceneView.resume()
-        } catch (e: CameraNotAvailableException) {
-            Log.e("MainActivity", "Camera not available on resume", e)
-            showError("Камера недоступна. Закройте другие приложения, использующие камеру.")
+        // Не дергаем resume(), если AR так и не смог стартовать (например, setupSession() вернул false).
+        if (isArSceneReady) {
+            try {
+                sceneView.resume()
+            } catch (e: CameraNotAvailableException) {
+                Log.e("MainActivity", "Camera not available on resume", e)
+                showError("Камера недоступна. Закройте другие приложения, использующие камеру.")
+            }
         }
 
         if (eyeOfAIActive) {
@@ -3266,12 +3445,6 @@ class MainActivity : AppCompatActivity() {
         runCatching { sceneView.pause() }
     }
 
-    private fun safeJsonSnippet(obj: Any): String {
-        return try {
-            gson.toJson(obj).take(2048)
-        } catch (e: Exception) {
-            ("<json_error:" + (e.message ?: "unknown") + ">").take(256)
-        }
-    }
+
 
 }

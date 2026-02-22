@@ -1,5 +1,6 @@
 package com.example.aibrain
 
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import retrofit2.Response
 import retrofit2.http.*
@@ -65,6 +66,12 @@ interface ApiService {
     suspend fun exportLatest(
         @Path("session_id") sessionId: String
     ): Response<SceneBundleResponse>
+
+    // Compatibility endpoint (used for readiness/scan hints and e2e smoke stability)
+    @POST("/session/{session_id}/request_scaffold")
+    suspend fun requestScaffoldCompat(
+        @Path("session_id") sessionId: String
+    ): Response<JsonObject>
 
     @POST("/session/log/{session_id}")
     suspend fun logEvent(
