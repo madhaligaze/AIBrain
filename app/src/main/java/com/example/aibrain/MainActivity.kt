@@ -311,7 +311,8 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            startArIfReady()
+            // Не стартуем AR прямо тут (на API 27 это может привести к падению до install-check).
+            // Пусть onResume безопасно сделает install-check и запустит AR при возможности.
         } else {
             showError("Нет доступа к камере. AR и рулетка недоступны.")
         }
@@ -388,10 +389,9 @@ class MainActivity : AppCompatActivity() {
             showReleaseDeviceCompatibilityWarning()
         }
 
-        // Camera permission is required for ARCore / ruler.
-        if (hasCameraPermission()) {
-            startArIfReady()
-        } else {
+        // Камера нужна для ARCore / рулетки.
+        // Важно: не запускаем AR здесь, чтобы не падать на API 27 до проверок ARCore в onResume().
+        if (!hasCameraPermission()) {
             requestCameraPermission()
         }
         sceneBuilder = SceneBuilder(sceneView)
@@ -3209,6 +3209,62 @@ class MainActivity : AppCompatActivity() {
         cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
+    private fun ensureArCoreReadyOrExplain(): Boolean {
+        // 1) API 27: не падаем, просто показываем сообщение и отключаем AR.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("AR требует Android 9 (API 28)+. На этом устройстве AR отключен.")
+            }
+            return false
+        }
+
+        // 2) Проверка поддержки ARCore на устройстве.
+        val availability = try {
+            ArCoreApk.getInstance().checkAvailability(this)
+        } catch (t: Throwable) {
+            Log.e("MainActivity", "ARCore availability check failed: ${t.message}", t)
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("ARCore недоступен. Проверьте Google Play Services for AR.")
+            }
+            return false
+        }
+
+        // Иногда состояние transient - это нормально (ARCore еще "думает"). Не спамим ошибками, просто ждём следующий onResume.
+        if (availability.isTransient) return false
+
+        if (!availability.isSupported) {
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("ARCore не поддерживается на этом устройстве.")
+            }
+            return false
+        }
+
+        // 3) Установка/обновление ARCore (Google Play Services for AR).
+        try {
+            when (ArCoreApk.getInstance().requestInstall(this, !arCoreInstallRequested)) {
+                ArCoreApk.InstallStatus.INSTALL_REQUESTED -> {
+                    arCoreInstallRequested = true
+                    return false
+                }
+                ArCoreApk.InstallStatus.INSTALLED -> {
+                    // continue
+                }
+            }
+        } catch (t: Throwable) {
+            Log.e("MainActivity", "ARCore install/request failed: ${t.message}", t)
+            if (!arcoreHintShown) {
+                arcoreHintShown = true
+                showError("ARCore не установлен/недоступен. Установите Google Play Services for AR.")
+            }
+            return false
+        }
+
+        return true
+    }
+
     override fun onResume() {
         isUiActive = true
         if (isStreaming && !currentSessionId.isNullOrBlank()) {
@@ -3221,34 +3277,22 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Ensure ARCore is installed / updated.
-        try {
-            when (ArCoreApk.getInstance().requestInstall(this, !arCoreInstallRequested)) {
-                ArCoreApk.InstallStatus.INSTALL_REQUESTED -> {
-                    arCoreInstallRequested = true
-                    return
-                }
-
-                ArCoreApk.InstallStatus.INSTALLED -> {
-                    // continue
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "ARCore install/request failed: ${e.message}", e)
-            if (!arcoreHintShown) {
-                arcoreHintShown = true
-                showError("ARCore не установлен или не поддерживается.")
-            }
+        // API 27: не падаем, показываем ошибку и живём дальше.
+        // Samsung/реальные девайсы: если ARCore отсутствует/недоступен - показываем ошибку и не стартуем камеру/сцену.
+        if (!ensureArCoreReadyOrExplain()) {
             return
         }
 
         startArIfReady()
 
-        try {
-            sceneView.resume()
-        } catch (e: CameraNotAvailableException) {
-            Log.e("MainActivity", "Camera not available on resume", e)
-            showError("Камера недоступна. Закройте другие приложения, использующие камеру.")
+        // Не дергаем resume(), если AR так и не смог стартовать (например, setupSession() вернул false).
+        if (isArSceneReady) {
+            try {
+                sceneView.resume()
+            } catch (e: CameraNotAvailableException) {
+                Log.e("MainActivity", "Camera not available on resume", e)
+                showError("Камера недоступна. Закройте другие приложения, использующие камеру.")
+            }
         }
 
         if (eyeOfAIActive) {
