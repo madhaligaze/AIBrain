@@ -371,6 +371,20 @@
                 android:background="@drawable/btn_units_toggle"
                 android:stateListAnimator="@null"
                 android:elevation="0dp" />
+
+            <!-- Export JSON -->
+            <Button
+                android:id="@+id/btn_ruler_export"
+                android:layout_width="80dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="12dp"
+                android:text="JSON"
+                android:textColor="#FF00F5FF"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:background="@drawable/btn_units_toggle"
+                android:stateListAnimator="@null"
+                android:elevation="0dp" />
         </LinearLayout>
     </LinearLayout>
 

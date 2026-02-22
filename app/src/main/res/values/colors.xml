@@ -165,6 +165,7 @@ USAGE:
 
     <!-- System UI -->
     <color name="window_background">#FF050A0F</color>
+    <color name="background_dark">@color/space_deepest</color>
     <color name="card_background">#FF15293D</color>
     <color name="divider">#3300F5FF</color>
 

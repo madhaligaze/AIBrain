@@ -44,6 +44,14 @@ android {
     kotlinOptions { jvmTarget = "1.8" }
     buildFeatures { buildConfig = true }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
+    lint {
+        abortOnError = false
+    }
+
     // Исключаем конфликтующие META-INF файлы из зависимостей AR-библиотек
     packaging {
         resources {

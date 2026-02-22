@@ -20,6 +20,9 @@ class ARSessionManager(
     var depthMode: Config.DepthMode = Config.DepthMode.DISABLED
         private set
 
+    /** True если устройство способно выдавать depth — не зависит от текущего frame state. */
+    val isDepthCapable: Boolean get() = (depthMode != Config.DepthMode.DISABLED)
+
     fun setupSession(): Boolean {
         // Жёсткая защита от падений на API 27 (Android 8.1) и ниже.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
@@ -82,6 +85,14 @@ class ARSessionManager(
             session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)      -> Config.DepthMode.AUTOMATIC
             else -> Config.DepthMode.DISABLED
         }
+
+        // Логируем полную информацию о depth capability один раз при конфигурации сессии.
+        Log.i(TAG, buildString {
+            append("Depth capability check: ")
+            append("RAW_DEPTH_ONLY=${session.isDepthModeSupported(Config.DepthMode.RAW_DEPTH_ONLY)} ")
+            append("AUTOMATIC=${session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)} ")
+            append("→ selected depthMode=$depthMode")
+        })
 
         // Проверяем наличие acquireEnvironmentalHdrCubeMap() в текущем ARCore рантайме.
         // ARCore 1.34.0+ deprecated этот метод; 1.39.0 может его не иметь совсем.

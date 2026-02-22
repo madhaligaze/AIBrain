@@ -1,26 +1,105 @@
 <resources>
     <string name="app_name">AI Brain</string>
-    <string name="hint_connecting">Подключение...</string>
-    <string name="hint_session_active">Сессия активна. Ищите пол и ставьте точки.</string>
-    <string name="hint_server_error_code">Ошибка сервера: %1$d</string>
-    <string name="hint_no_connection">Нет связи: %1$s</string>
-    <string name="hint_reconnecting_attempt">Связь потеряна. Переподключение %1$d/%2$d...</string>
-    <string name="hint_retry_failed">Не удалось переподключиться. Проверьте сеть и попробуйте снова.</string>
+
+    <string name="state_idle">Наведите камеру. Нажмите СТАРТ.</string>
+    <string name="state_connecting">Подключение к серверу…</string>
+    <string name="state_scanning">Сканирование. Опор: %1$d</string>
+    <string name="state_modeling">AI строит модель…</string>
+    <string name="state_preview">3D-модель. Измените ракурс для проверки.</string>
+    <string name="state_selecting">Выберите вариант конструкции.</string>
+    <string name="state_results">Готово. Нажмите ЗАНОВО для нового сеанса.</string>
+
+    <string name="hint_connecting">Подключение к серверу…</string>
+    <string name="hint_session_active">Сессия открыта. Поставьте опору и начните сканирование.</string>
+    <string name="hint_server_error_code">Сервер вернул ошибку %1$d. Повторите через несколько секунд.</string>
+    <string name="hint_no_connection">Нет связи: %1$s. Проверьте Wi-Fi или IP сервера.</string>
+    <string name="hint_reconnecting_attempt">Связь прервана. Восстановление %1$d/%2$d…</string>
+    <string name="hint_retry_failed">Не удалось восстановить связь. Проверьте сеть и нажмите СТАРТ.</string>
     <string name="hint_session_not_started">Сессия не запущена. Нажмите СТАРТ.</string>
+    <string name="hint_network_unstable">Нестабильная сеть (%1$d сбоев подряд). Проверьте соединение.</string>
+    <string name="hint_reconnect_wait">Восстановление связи… Попытка %1$d (ждём %2$d с)</string>
+    <string name="hint_session_restored">Сессия восстановлена. Продолжайте сканирование.</string>
+    <string name="hint_modeling_retry">Анализ: попытка %1$d/%2$d, следующая через %3$d с…</string>
+    <string name="unknown_error">неизвестная ошибка</string>
+
     <string name="hint_ai_message">ИИ: %1$s</string>
     <string name="hint_ai_prefix">ИИ:</string>
-    <string name="toast_point_added">Точка добавлена!</string>
-    <string name="hint_points_count">Точек: %1$d</string>
-    <string name="toast_move_closer">Подойдите ближе к поверхности</string>
-    <string name="hint_ai_thinking">ИИ думает...</string>
-    <string name="hint_modeling_done_options">Готово! Вариантов: %1$d</string>
-    <string name="hint_modeling_error">Ошибка моделирования</string>
+    <string name="hint_ai_thinking">AI анализирует структуру…</string>
+    <string name="hint_modeling_done_options">Анализ завершён. Вариантов: %1$d</string>
+    <string name="hint_modeling_error">Анализ не дал результата. Добавьте ракурсов и повторите.</string>
     <string name="hint_failure_message">Сбой: %1$s</string>
-    <string name="hint_network_unstable">⚠️ Нестабильная сеть (%1$d сбоев)</string>
-    <string name="hint_reconnect_wait">🔄 Переподключение... Попытка %1$d (ждём %2$dс)</string>
-    <string name="hint_session_restored">✅ Сессия восстановлена</string>
-    <string name="hint_modeling_retry">⏳ Попытка %1$d/%2$d, следующая через %3$dс...</string>
-    <string name="unknown_error">неизвестная ошибка</string>
+
+    <string name="toast_support_added">Опора установлена</string>
+    <string name="toast_waypoint_added">Точка добавлена</string>
+    <string name="toast_point_added">Точка добавлена</string>
+    <string name="hint_support_count">Опор: %1$d</string>
+    <string name="hint_points_count">Точек: %1$d</string>
+    <string name="hint_max_supports">Достигнут максимум опор (%1$d). Используйте «Точка» для дополнительных меток.</string>
+    <string name="hint_max_points">Достигнут максимум меток (%1$d).</string>
+    <string name="hint_need_support_first">Сначала поставьте хотя бы одну опору — она задаёт якорь для AI.</string>
+    <string name="toast_move_closer">Подойдите ближе к поверхности</string>
+    <string name="hint_plane_not_found">Плоскость не найдена. Медленнее ведите камеру по поверхности.</string>
+    <string name="hint_point_by_features">Плоскость не определена точно — опора поставлена по feature-points. Для лучшего результата наведитесь на пол или стену.</string>
+
+    <string name="hint_scan_more_angles">Недостаточно ракурсов. Обойдите опору полукругом 180°.</string>
+    <string name="hint_scan_low_coverage">Низкое покрытие. Сканируйте 20–30 с, поднимая и опуская камеру.</string>
+    <string name="hint_depth_not_supported">Датчик глубины не поддерживается. Сканирование работает, но потребуется больше ракурсов.</string>
+    <string name="hint_depth_no_data">Глубина временно недоступна (плохой свет?). Продолжайте — данные накапливаются.</string>
+    <string name="hint_depth_unstable">Данные глубины нестабильны. Улучшите освещение или замедлите движение.</string>
+    <string name="hint_depth_no_data_session">Depth недоступен на этой сессии. Система переключилась на RGB и облако точек.</string>
+    <string name="hint_depth_strategy_full">Датчик глубины работает. Покрытие ускорено.</string>
+    <string name="readiness_profile_with_depth">Режим с глубиной — стандартные пороги</string>
+    <string name="readiness_profile_no_depth">Без датчика глубины — нужно больше ракурсов</string>
+    <string name="readiness_profile_unstable">Глубина нестабильна — требования к охвату повышены</string>
+    <string name="hint_scan_complete">Сканирование завершено. Качество: %1$d%%</string>
+    <string name="hint_quality_too_low">Качество %1$d%% — нужно не менее %2$d%%. Добавьте ракурсов.</string>
+
+    <string name="ar_ns_title_api">Android слишком старый</string>
+    <string name="ar_ns_body_api">AR требует Android 9 (API 28) и выше.
+
+На вашем устройстве AR недоступен, но приложение продолжит работу в режиме без AR.</string>
+    <string name="ar_ns_title_unsupported">AR не поддерживается</string>
+    <string name="ar_ns_body_unsupported">Ваше устройство не поддерживает ARCore.
+
+Приложение продолжит работу без AR-функций.</string>
+    <string name="ar_ns_title_install">Требуется установка ARCore</string>
+    <string name="ar_ns_body_install">Для AR-функций нужен Google Play Services for AR.
+
+Нажмите кнопку ниже, чтобы установить его из Google Play.</string>
+    <string name="ar_ns_title_session">AR-сессия не запустилась</string>
+    <string name="ar_ns_body_session">Не удалось запустить AR-сессию. Убедитесь, что ARCore обновлён, и закройте другие приложения, использующие камеру.
+
+Попробуйте перезапустить приложение.</string>
+
+    <string name="hint_assets_missing">Локальные 3D-ассеты не найдены. Сканирование и AI работают в обычном режиме.</string>
+    <string name="hint_assets_load_fail">Не удалось загрузить локальные 3D-ассеты. Сканирование продолжается.</string>
+    <string name="hint_3d_built">Построено элементов: %1$d</string>
+    <string name="hint_3d_empty">Нет элементов для 3D-превью. Выполните анализ.</string>
+    <string name="hint_physics_ok">Карта нагрузок обновлена</string>
+    <string name="hint_physics_no_data">Нет данных физики. Сначала выберите вариант конструкции.</string>
+    <string name="hint_export_saving">Формируется отчёт…</string>
+    <string name="hint_export_saved">Отчёт сохранён: %1$s</string>
+    <string name="hint_export_fail">Не удалось сохранить отчёт: %1$s</string>
+    <string name="hint_variant_accepted">Вариант «%1$s» принят</string>
+
+    <string name="hint_ruler_active">Режим измерения активен. Нажмите на поверхность для добавления точек.</string>
+    <string name="hint_ruler_saved">Измерение сохранено: %1$s</string>
+    <string name="toast_ruler_no_measurements">Нет сохранённых измерений</string>
+    <string name="toast_ruler_saved">Измерение: %1$s</string>
+    <string name="hint_ar_frame_unavailable">AR кадр недоступен. Подождите секунду и повторите.</string>
+    <string name="hint_tracking_unstable">Трекинг нестабилен. Держите камеру спокойно и повторите.</string>
+
+    <string name="toast_undo">Отменено: %1$s</string>
+    <string name="toast_redo">Повторено: %1$s</string>
+
+    <string name="btn_start_desc">Начать новую сессию</string>
+    <string name="btn_support_desc">Добавить опору в точке наведения камеры</string>
+    <string name="btn_waypoint_desc">Добавить вспомогательную точку</string>
+    <string name="btn_scan_desc">Выполнить интенсивное сканирование</string>
+    <string name="btn_model_desc">Показать 3D-превью</string>
+    <string name="btn_analyze_desc">Отправить данные на AI-анализ</string>
+    <string name="btn_ruler_desc">Переключить режим измерения рулеткой</string>
+
     <string name="connect_title">AI Brain — подключение</string>
     <string name="connect_url_hint">Например: 192.168.1.10:8000</string>
     <string name="connect_help">Введите адрес сервера и нажмите «Проверить связь». Если всё в порядке — нажмите «Продолжить».</string>
@@ -28,7 +107,7 @@
     <string name="connect_continue">Продолжить</string>
     <string name="connect_settings">Настройки</string>
     <string name="connect_invalid_url">Некорректный адрес сервера</string>
-    <string name="connect_status_checking">Проверяем связь...</string>
+    <string name="connect_status_checking">Проверяем связь…</string>
     <string name="connect_status_online">Сервер доступен</string>
-    <string name="connect_status_offline">Сервер недоступен</string>
+    <string name="connect_status_offline">Сервер недоступен. Проверьте IP и запущен ли сервер.</string>
 </resources>

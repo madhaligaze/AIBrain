@@ -2,6 +2,7 @@ package com.example.aibrain
 
 import android.graphics.ImageFormat
 import android.media.Image
+import android.util.Log
 import android.util.Base64
 import com.google.ar.core.Frame
 
@@ -25,10 +26,25 @@ object DepthUtils {
     )
 
     fun tryAcquireDepth16(frame: Frame): AcquiredDepthImage? {
-        val raw = runCatching { frame.acquireRawDepthImage16Bits() }.getOrNull()
+        // Пробуем RAW depth (точнее, но требует ToF/structured light).
+        val raw = runCatching {
+            frame.acquireRawDepthImage16Bits()
+        }.onFailure { e ->
+            // NotYetAvailableException — нормально в warmup, логируем только неожиданные ошибки.
+            if (e !is com.google.ar.core.exceptions.NotYetAvailableException) {
+                Log.w("DepthUtils", "acquireRawDepthImage16Bits failed: ${e.javaClass.simpleName}: ${e.message}")
+            }
+        }.getOrNull()
         if (raw != null) return AcquiredDepthImage(raw, isRaw = true)
 
-        val smoothed = runCatching { frame.acquireDepthImage16Bits() }.getOrNull()
+        // Fallback: smoothed depth (работает на большем числе устройств, но с задержкой).
+        val smoothed = runCatching {
+            frame.acquireDepthImage16Bits()
+        }.onFailure { e ->
+            if (e !is com.google.ar.core.exceptions.NotYetAvailableException) {
+                Log.w("DepthUtils", "acquireDepthImage16Bits failed: ${e.javaClass.simpleName}: ${e.message}")
+            }
+        }.getOrNull()
         return smoothed?.let { AcquiredDepthImage(it, isRaw = false) }
     }
 

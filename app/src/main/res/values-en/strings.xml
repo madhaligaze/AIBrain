@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">AI Brain</string>
+    <string name="state_idle">Point camera. Press START.</string>
+    <string name="state_connecting">Connecting to server…</string>
+    <string name="state_scanning">Scanning. Supports: %1$d</string>
+    <string name="state_modeling">AI building model…</string>
+    <string name="state_preview">3D model. Change angle to inspect.</string>
+    <string name="state_selecting">Choose a construction variant.</string>
+    <string name="state_results">Done. Press RESTART for a new session.</string>
+</resources>

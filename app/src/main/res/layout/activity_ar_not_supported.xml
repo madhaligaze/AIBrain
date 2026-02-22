@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="@color/background_dark">
+
+    <TextView
+        android:id="@+id/tv_ar_ns_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="AR недоступен"
+        android:textColor="@color/cyan_primary"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tv_ar_ns_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_white_bright"
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <Button
+        android:id="@+id/btn_ar_ns_install"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="Установить Google Play Services for AR"
+        android:textSize="13sp"
+        android:backgroundTint="@color/cyan_primary"
+        android:textColor="@color/background_dark"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btn_ar_ns_back"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="Назад"
+        android:textSize="13sp"
+        android:backgroundTint="@color/orange_alpha_20"
+        android:textColor="@color/orange_primary" />
+
+</LinearLayout>

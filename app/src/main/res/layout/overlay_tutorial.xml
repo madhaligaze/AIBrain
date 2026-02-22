@@ -36,6 +36,16 @@
             android:fontFamily="monospace"
             android:lineSpacingExtra="3dp"
             android:layout_marginBottom="16dp" />
+        <CheckBox
+            android:id="@+id/cb_tutorial_no_more"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Не показывать снова"
+            android:textColor="@color/text_white_bright"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="12dp"
+            android:buttonTint="@color/cyan_primary" />
 
         <LinearLayout
             android:layout_width="match_parent"
