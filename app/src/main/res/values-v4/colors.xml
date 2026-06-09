@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="cyan_primary">#00FFCC</color>
+    <color name="cyan_alpha_40">#6600FFCC</color>
+    <color name="cyan_alpha_20">#3300FFCC</color>
+    <color name="orange_primary">#FF6600</color>
+    <color name="orange_alpha_60">#99FF6600</color>
+    <color name="red_danger">#FF3344</color>
+    <color name="yellow_warning">#FFD700</color>
+    <color name="green_ok">#00FF88</color>
+
+    <color name="bg_dark">#0A0E1A</color>
+    <color name="bg_panel">#CC111827</color>
+    <color name="bg_chip">#33FFFFFF</color>
+
+    <color name="text_primary">#E8F4F8</color>
+    <color name="text_secondary">#99E8F4F8</color>
+    <color name="text_disabled">#44E8F4F8</color>
+</resources>

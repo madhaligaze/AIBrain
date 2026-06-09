@@ -20,6 +20,7 @@ import com.google.ar.sceneform.rendering.ViewRenderable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -559,22 +560,40 @@ class ARRuler(
         return Vector3(sx / n, sy / n, sz / n)
     }
 
-    internal fun formatDistance(meters: Float): String {
+    // Two formatting paths, intentionally:
+    //  • display  → device locale (a Russian user sees "2,00 м²"),
+    //  • machine  → Locale.US ('.' decimal) for export / server / CSV stability.
+    internal fun formatDistance(meters: Float): String = formatDistanceIn(meters, Locale.getDefault())
+
+    internal fun formatArea(m2: Float): String = formatAreaIn(m2, Locale.getDefault())
+
+    fun formatDistanceMachine(meters: Float): String = formatDistanceIn(meters, Locale.US)
+
+    fun formatAreaMachine(m2: Float): String = formatAreaIn(m2, Locale.US)
+
+    /** Locale-stable label for a saved measurement (for export / server payloads). */
+    fun machineLabel(m: Measurement): String = when (m.type) {
+        MeasurementType.AREA -> formatAreaMachine(m.area ?: m.distance)
+        else -> formatDistanceMachine(m.distance)
+    }
+
+    private fun formatDistanceIn(meters: Float, locale: Locale): String {
         val m = max(0f, meters)
         return when (units) {
-            Units.METRIC -> if (m >= 1f) "%.2f м".format(m) else "%.1f см".format(m * 100f)
+            Units.METRIC ->
+                if (m >= 1f) String.format(locale, "%.2f м", m) else String.format(locale, "%.1f см", m * 100f)
             Units.IMPERIAL -> {
                 val feet = m * 3.28084f
-                if (feet >= 1f) "%.2f ft".format(feet) else "%.1f in".format(feet * 12f)
+                if (feet >= 1f) String.format(locale, "%.2f ft", feet) else String.format(locale, "%.1f in", feet * 12f)
             }
         }
     }
 
-    internal fun formatArea(m2: Float): String {
+    private fun formatAreaIn(m2: Float, locale: Locale): String {
         val a = max(0f, m2)
         return when (units) {
-            Units.METRIC -> "%.2f м²".format(a)
-            Units.IMPERIAL -> "%.2f ft²".format(a * 10.7639104f)
+            Units.METRIC -> String.format(locale, "%.2f м²", a)
+            Units.IMPERIAL -> String.format(locale, "%.2f ft²", a * 10.7639104f)
         }
     }
 }

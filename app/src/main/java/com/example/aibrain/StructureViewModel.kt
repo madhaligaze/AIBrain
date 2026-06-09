@@ -26,7 +26,20 @@ class StructureViewModel(
     private val _structureState = MutableStateFlow<StructureState>(StructureState.Idle)
     val structureState: StateFlow<StructureState> = _structureState
 
-    private var currentSessionId: String? = null
+    private val _readiness = MutableStateFlow(ReadinessState())
+    val readiness: StateFlow<ReadinessState> = _readiness
+
+    fun setReadiness(
+        ready: Boolean?,
+        score: Double?,
+        metrics: ReadinessMetrics?,
+        reasons: List<String>
+    ) {
+        _readiness.value = ReadinessState(ready, score, metrics, reasons)
+    }
+
+    private val _sessionId = MutableStateFlow<String?>(null)
+    val sessionId: StateFlow<String?> = _sessionId
     private val snapshots = mutableListOf<StructureSnapshot>()
     private var currentSnapshotIndex = -1
     private val maxSnapshots = 20
@@ -38,7 +51,7 @@ class StructureViewModel(
     )
 
     fun setSessionId(sessionId: String) {
-        currentSessionId = sessionId
+        _sessionId.value = sessionId
     }
 
     fun updateApiService(newApiService: ApiService) {
@@ -131,7 +144,7 @@ class StructureViewModel(
      * Предварительный просмотр: что произойдет если удалить элемент.
      */
     fun previewRemoveElement(elementId: String, onResult: (PreviewResponse) -> Unit) {
-        val sessionId = currentSessionId ?: return
+        val sessionId = _sessionId.value ?: return
 
         viewModelScope.launch {
             try {
@@ -153,7 +166,7 @@ class StructureViewModel(
         onSuccess: (UpdateResponse) -> Unit,
         onError: (String) -> Unit
     ) {
-        val sessionId = currentSessionId ?: run {
+        val sessionId = _sessionId.value ?: run {
             onError("No active session")
             return
         }
@@ -194,7 +207,7 @@ class StructureViewModel(
         onSuccess: (UpdateResponse) -> Unit,
         onError: (String) -> Unit
     ) {
-        val sessionId = currentSessionId ?: run {
+        val sessionId = _sessionId.value ?: run {
             onError("No active session")
             return
         }
@@ -227,6 +240,14 @@ class StructureViewModel(
         }
     }
 }
+
+/** Latest scan-readiness reported by the server (drives the readiness UI). */
+data class ReadinessState(
+    val ready: Boolean? = null,
+    val score: Double? = null,
+    val metrics: ReadinessMetrics? = null,
+    val reasons: List<String> = emptyList()
+)
 
 enum class EditMode {
     EDIT,

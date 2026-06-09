@@ -3,6 +3,7 @@ package com.example.aibrain.measurement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 import kotlin.math.abs
 
 class ARRulerUnitTest {
@@ -106,22 +107,36 @@ class ARRulerUnitTest {
         fun fmtArea(m2: Float) = formatAreaPure(m2, units)
     }
 
-    private fun formatDistancePure(m: Float, units: ARRuler.Units): String {
+    // Mirrors ARRuler.formatDistanceIn. Defaults to Locale.US (the machine path,
+    // '.' decimal) so these assertions are deterministic regardless of the JVM's
+    // default locale; pass a locale to exercise the display path.
+    private fun formatDistancePure(m: Float, units: ARRuler.Units, locale: Locale = Locale.US): String {
         val v = maxOf(0f, m)
         return when (units) {
-            ARRuler.Units.METRIC -> if (v >= 1f) "%.2f м".format(v) else "%.1f см".format(v * 100f)
+            ARRuler.Units.METRIC ->
+                if (v >= 1f) String.format(locale, "%.2f м", v) else String.format(locale, "%.1f см", v * 100f)
             ARRuler.Units.IMPERIAL -> {
                 val feet = v * 3.28084f
-                if (feet >= 1f) "%.2f ft".format(feet) else "%.1f in".format(feet * 12f)
+                if (feet >= 1f) String.format(locale, "%.2f ft", feet) else String.format(locale, "%.1f in", feet * 12f)
             }
         }
     }
 
-    private fun formatAreaPure(m2: Float, units: ARRuler.Units): String {
+    private fun formatAreaPure(m2: Float, units: ARRuler.Units, locale: Locale = Locale.US): String {
         val a = maxOf(0f, m2)
         return when (units) {
-            ARRuler.Units.METRIC -> "%.2f м²".format(a)
-            ARRuler.Units.IMPERIAL -> "%.2f ft²".format(a * 10.7639104f)
+            ARRuler.Units.METRIC -> String.format(locale, "%.2f м²", a)
+            ARRuler.Units.IMPERIAL -> String.format(locale, "%.2f ft²", a * 10.7639104f)
         }
+    }
+
+    @Test
+    fun `machine format uses dot, display format follows locale`() {
+        // Machine (US): '.', deterministic for export / server / CSV.
+        assertEquals("2.00 м²", formatAreaPure(2.0f, ARRuler.Units.METRIC, Locale.US))
+        assertEquals("1.50 м", formatDistancePure(1.5f, ARRuler.Units.METRIC, Locale.US))
+        // Display (ru): ',' — what a Russian user sees on screen.
+        assertEquals("2,00 м²", formatAreaPure(2.0f, ARRuler.Units.METRIC, Locale("ru")))
+        assertEquals("1,50 м", formatDistancePure(1.5f, ARRuler.Units.METRIC, Locale("ru")))
     }
 }

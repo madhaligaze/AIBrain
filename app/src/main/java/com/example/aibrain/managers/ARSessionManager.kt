@@ -6,16 +6,26 @@ import android.util.Log
 import com.google.ar.core.Anchor
 import com.google.ar.core.CameraConfigFilter
 import com.google.ar.core.Config
+import com.google.ar.core.Frame
 import com.google.ar.core.LightEstimate
+import com.google.ar.core.Plane
+import com.google.ar.core.TrackingState
 import com.google.ar.core.Session
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.ArSceneView
 import com.gorisse.thomas.sceneform.light.LightEstimationConfig
+import kotlin.math.abs
 
 class ARSessionManager(
     private val context: Context,
     private val sceneView: ArSceneView,
 ) {
+    var lastSurfaceType: SurfaceType = SurfaceType.UNKNOWN
+        private set
+    private var noSurfaceStreak = 0
+
+    enum class SurfaceType { FLOOR, WALL, CEILING, UNKNOWN }
+
     private var currentAnchorNode: AnchorNode? = null
     var depthMode: Config.DepthMode = Config.DepthMode.DISABLED
         private set
@@ -209,6 +219,47 @@ class ARSessionManager(
         currentAnchorNode?.setParent(null)
         currentAnchorNode = null
     }
+
+    fun classifySurface(frame: Frame, screenX: Float, screenY: Float): SurfaceType {
+        val hits = frame.hitTest(screenX, screenY)
+        val planeHit = hits.firstOrNull { hr ->
+            val t = hr.trackable
+            t is Plane && t.trackingState == TrackingState.TRACKING && t.isPoseInPolygon(hr.hitPose)
+        }
+        if (planeHit == null) {
+            noSurfaceStreak++
+            return SurfaceType.UNKNOWN
+        }
+
+        noSurfaceStreak = 0
+        val plane = planeHit.trackable as Plane
+        val type = when (plane.type) {
+            Plane.Type.HORIZONTAL_UPWARD_FACING -> SurfaceType.FLOOR
+            Plane.Type.HORIZONTAL_DOWNWARD_FACING -> SurfaceType.CEILING
+            Plane.Type.VERTICAL -> SurfaceType.WALL
+            else -> {
+                val pose = planeHit.hitPose
+                val yAxis = pose.getYAxis()
+                when {
+                    abs(yAxis[1]) > 0.7f && yAxis[1] > 0f -> SurfaceType.FLOOR
+                    abs(yAxis[1]) > 0.7f && yAxis[1] < 0f -> SurfaceType.CEILING
+                    else -> SurfaceType.WALL
+                }
+            }
+        }
+        lastSurfaceType = type
+        return type
+    }
+
+    fun isTrackingStable(frame: Frame): Boolean {
+        if (frame.camera.trackingState != TrackingState.TRACKING) return false
+        val pc = runCatching { frame.acquirePointCloud() }.getOrNull()
+        val pointCount = pc?.points?.remaining()?.div(4) ?: 0
+        runCatching { pc?.release() }
+        return pointCount >= 5
+    }
+
+    fun isConsistentlyNoSurface(threshold: Int = 10): Boolean = noSurfaceStreak >= threshold
 
     private companion object {
         const val TAG = "ARSessionManager"

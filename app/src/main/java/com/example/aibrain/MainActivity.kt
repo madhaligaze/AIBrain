@@ -85,6 +85,9 @@ import com.example.aibrain.depth.DepthPolicy
 import com.example.aibrain.depth.ReadinessProfile
 import com.example.aibrain.visualization.VoxelData
 import com.example.aibrain.visualization.VoxelVisualizer
+import com.example.aibrain.scaffold.ScaffoldCylinderRenderer
+import com.example.aibrain.ai.YoloInferenceEngine
+import com.example.aibrain.ai.AIVisionController
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -137,7 +140,6 @@ class MainActivity : AppCompatActivity() {
         private const val STREAM_INTERVAL_MS = 1_000L
         private const val AUTO_RELOAD_COOLDOWN_MS: Long = 12_000L
         private const val MAX_POINTS = 20
-        private const val MAX_SUPPORTS = 3
         private const val PREFS_NAME = "app_settings"
         private const val PREF_SERVER_BASE_URL = "server_base_url"
         private const val KEY_SESSION_HISTORY = "session_history_json"
@@ -194,8 +196,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fabEyeOfAI: FloatingActionButton
     private lateinit var voxelLegend: LinearLayout
     private var tvFieldDiag: TextView? = null
+    private lateinit var aiVision: AIVisionController
+    private lateinit var scaffoldRenderer: ScaffoldCylinderRenderer
+    private var lastYoloDetections: List<YoloInferenceEngine.Detection> = emptyList()
 
     private lateinit var viewGridOverlay: View
+    private lateinit var smartReticle: SmartReticleView
+
+    // Scan-mode animation targets
+    private lateinit var llHudMetrics: LinearLayout
+    private lateinit var llCoordsPanel: LinearLayout
+    private lateinit var llStatusPanel: LinearLayout
+    private lateinit var undoRedoPanel: LinearLayout
 
     // Панели
     private lateinit var controlPanel: LinearLayout
@@ -222,7 +234,12 @@ class MainActivity : AppCompatActivity() {
     // СОСТОЯНИЕ - ОСНОВНОЕ
     // ══════════════════════════════════════════════════════════════════════
     private var appState = AppState.IDLE
-    private var currentSessionId: String? = null
+    // Read from the streaming coroutine (off the main thread) and written on the
+    // main thread, so it must be volatile to avoid acting on a stale session id.
+    // Session id is owned by the ViewModel (StateFlow). Read-only view here;
+    // StateFlow.value is safe to read off the main thread (streaming loop).
+    private val currentSessionId: String?
+        get() = if (::viewModel.isInitialized) viewModel.sessionId.value else null
     private var isStreaming = false
     private var streamJob: Job? = null
     private var healthJob: Job? = null
@@ -269,40 +286,74 @@ class MainActivity : AppCompatActivity() {
     private lateinit var voxelVisualizer: VoxelVisualizer
     private var currentVoxelData: List<VoxelData>? = null
     private var eyeOfAIActive = false
-    private var layerGlbManager: LayerGlbManager? = null
-    private var exportedLayers: List<UiLayer> = emptyList()
-    private val exportedLayerPaths: MutableMap<String, String> = mutableMapOf()
-    private var loadedExportRevId: String? = null
-    private var currentConnStatus: ConnectionStatus = ConnectionStatus.UNKNOWN
+    private val layerController by lazy {
+        com.example.aibrain.controller.LayerController(
+            context = this,
+            sceneView = sceneView,
+            scope = scope,
+            settingsPrefs = settingsPrefs,
+            serverUrl = { getCurrentServerUrl() },
+        )
+    }
+    // Connection status is owned by the ViewModel (single source of truth).
+    // Exposed read-only here; StateFlow.value is safe to read off the main thread
+    // (the stream payload's client_stats reads it).
+    private val currentConnStatus: ConnectionStatus
+        get() = if (::viewModel.isInitialized) viewModel.connectionState.value.status else ConnectionStatus.UNKNOWN
     @Volatile private var streamPendingTick: Boolean = false
     @Volatile private var streamImmediateNextTick: Boolean = false
-    private var streamIntervalMs: Long = STREAM_INTERVAL_MS
-    private var streamJpegQuality: Int = 72
-    private var streamPointCap: Int = 300
-    private var sendTimeEwmaMs: Double = 0.0
+    private val streamTuner = com.example.aibrain.streaming.StreamTuner(intervalMs = STREAM_INTERVAL_MS)
     private var lastSendMs: Long = 0L
-    private var lastReadinessReady: Boolean? = null
-    private var lastReadinessScore: Double? = null
-    private var lastReadinessMetrics: ReadinessMetrics? = null
-    private var lastReadinessReasons: List<String> = emptyList()
+    // Readiness UI state now lives in StructureViewModel.readiness (StateFlow).
     private var lastReadinessHintsHash: String? = null
     private var lastReadinessHintsAtMs: Long = 0L
     private var lastCompatHintsHash: String? = null
     private var lastCompatHintsAtMs: Long = 0L
     private var nextStreamAttemptAtMs: Long = 0L
-    private var exportPollJob: Job? = null
-    private var readinessPollJob: Job? = null
-    @Volatile private var exportPollInFlight: Boolean = false
+    private val exportPoller by lazy {
+        com.example.aibrain.controller.ExportPoller(
+            scope = lifecycleScope,
+            api = api,
+            netState = netState,
+            viewModel = viewModel,
+            crashReporter = crashReporter,
+            exportMutex = lockExportMutex,
+            serverUrl = { getCurrentServerUrl().trimEnd('/') },
+            isUiActive = { isUiActive },
+            isActiveSession = { sid -> isStreaming && currentSessionId == sid },
+            onAutoReport = { trigger -> maybeAutoReport(trigger) },
+            onUiRefresh = { updateReadinessUI() },
+            setNotReady409 = { v -> exportNotReady409 = v },
+            onExportRevision = { sid, rev -> onExportLatestRevision(sid, rev) },
+        )
+    }
+    private val readinessPoller by lazy {
+        com.example.aibrain.controller.ReadinessPoller(
+            scope = lifecycleScope,
+            api = api,
+            netState = netState,
+            viewModel = viewModel,
+            crashReporter = crashReporter,
+            serverUrl = { getCurrentServerUrl().trimEnd('/') },
+            isUiActive = { isUiActive },
+            isActiveSession = { sid -> isStreaming && currentSessionId == sid },
+            onResult = { body -> onReadinessResult(body) },
+        )
+    }
+    private val sessionLockClient by lazy {
+        com.example.aibrain.controller.SessionLockClient(
+            api = api,
+            offlineQueue = offlineQueue,
+            crashReporter = crashReporter,
+            lockMutex = lockExportMutex,
+            serverUrl = { getCurrentServerUrl() },
+        )
+    }
     @Volatile private var pendingExportRevId: String? = null
     private val exportLoadMutex = Mutex()
     private val lockExportMutex = Mutex()
-    private var exportPollFailures: Int = 0
-    private var readinessPollFailures: Int = 0
     @Volatile private var autoReportInFlight: Boolean = false
     private var streamErrorStreak: Int = 0
-    private var exportFailStreak: Int = 0
-    private var nextExportPollAtMs: Long = 0L
-    private var nextReadinessPollAtMs: Long = 0L
     private var exportNotReady409: Boolean = false
     private var lastAutoReloadAtMs: Long = 0L
     private var pendingAutoReloadRev: String? = null
@@ -444,6 +495,11 @@ class MainActivity : AppCompatActivity() {
         // Pass shared soundManager to avoid double SoundPool instance
         physicsAnimator = PhysicsAnimator(sceneView, sceneBuilder, this, soundManager)
 
+        aiVision = AIVisionController(this, scope)
+        aiVision.onYoloResults = { dets -> applyYoloResults(dets) }
+        aiVision.onHazardDetected = { _ -> vibrate(300) }
+        scaffoldRenderer = ScaffoldCylinderRenderer(sceneView, scope)
+
         lifecycleScope.launch {
             viewModel.structureState.collect { state ->
                 handleStructureState(state)
@@ -538,6 +594,11 @@ class MainActivity : AppCompatActivity() {
         fabEyeOfAI = findViewById(R.id.fab_eye_of_ai)
         voxelLegend = findViewById(R.id.voxel_legend)
         viewGridOverlay = findViewById(R.id.view_grid_overlay)
+        smartReticle = findViewById(R.id.smart_reticle)
+        llHudMetrics = findViewById(R.id.ll_hud_metrics)
+        llCoordsPanel = findViewById(R.id.ll_coords_panel)
+        llStatusPanel = findViewById(R.id.ll_status_panel)
+        undoRedoPanel = findViewById(R.id.undo_redo_panel)
 
         // Панели
         controlPanel = findViewById(R.id.control_panel)
@@ -677,19 +738,60 @@ class MainActivity : AppCompatActivity() {
                 lightingSetup = true
             }
 
-            if (::arRuler.isInitialized) {
-                val frame = sceneView.arFrame ?: return@addOnUpdateListener
-                val camera = frame.camera
-                val hits = frame.hitTest(sceneView.width / 2f, sceneView.height / 2f)
-                val hit = hits.firstOrNull { hr ->
-                    val t = hr.trackable
-                    when (t) {
-                        is Plane -> t.trackingState == TrackingState.TRACKING && t.isPoseInPolygon(hr.hitPose)
-                        is Point -> t.trackingState == TrackingState.TRACKING
-                        else -> false
+            val frame = sceneView.arFrame ?: return@addOnUpdateListener
+            val camera = frame.camera
+
+            val centerHits = frame.hitTest(sceneView.width / 2f, sceneView.height / 2f)
+            val planeHit = centerHits.firstOrNull { hr ->
+                val t = hr.trackable
+                t is Plane && t.trackingState == TrackingState.TRACKING && t.isPoseInPolygon(hr.hitPose)
+            }
+            val pointHit = centerHits.firstOrNull { hr ->
+                val t = hr.trackable
+                t is Point && t.trackingState == TrackingState.TRACKING
+            }
+            val bestHit = planeHit ?: pointHit
+
+            if (::smartReticle.isInitialized) {
+                val reticleState: SmartReticleView.State
+                val label: String
+                val planeType: SmartReticleView.PlaneType
+
+                if (camera.trackingState != TrackingState.TRACKING) {
+                    reticleState = SmartReticleView.State.SEARCHING
+                    label = "ПОИСК..."
+                    planeType = SmartReticleView.PlaneType.UNKNOWN
+                } else if (planeHit != null) {
+                    val plane = planeHit.trackable as Plane
+                    planeType = when (plane.type) {
+                        Plane.Type.HORIZONTAL_UPWARD_FACING,
+                        Plane.Type.HORIZONTAL_DOWNWARD_FACING -> SmartReticleView.PlaneType.FLOOR
+                        Plane.Type.VERTICAL -> SmartReticleView.PlaneType.WALL
+                        else -> SmartReticleView.PlaneType.UNKNOWN
                     }
+                    label = when (planeType) {
+                        SmartReticleView.PlaneType.FLOOR -> "ПОЛ"
+                        SmartReticleView.PlaneType.WALL -> "СТЕНА"
+                        else -> "ПЛОСКОСТЬ"
+                    }
+                    reticleState = SmartReticleView.State.READY_PLANE
+                } else if (pointHit != null) {
+                    reticleState = SmartReticleView.State.READY_POINT
+                    label = "FEATURE"
+                    planeType = SmartReticleView.PlaneType.UNKNOWN
+                } else {
+                    reticleState = SmartReticleView.State.NO_SURFACE
+                    label = "НЕТ ПОВЕРХНОСТИ"
+                    planeType = SmartReticleView.PlaneType.UNKNOWN
                 }
-                arRuler.updateCameraState(camera, hit)
+
+                runOnUiThread {
+                    smartReticle.updateState(reticleState, label, planeType)
+                }
+            }
+
+            if (::arRuler.isInitialized) {
+                arRuler.updateCameraState(camera, bestHit)
             }
         }
 
@@ -714,6 +816,7 @@ class MainActivity : AppCompatActivity() {
 
         // Основные действия
         btnStart.setOnClickListener { onStartClicked() }
+        smartReticle.setOnClickListener { onReticleTapped() }
         btnAddPoint.setOnClickListener { onAddSupportClicked() }
         btnAddWaypoint.setOnClickListener { onAddWaypointClicked() }
         btnAddPoint.setOnLongClickListener {
@@ -786,6 +889,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         stopReadinessPolling()
+        if (::aiVision.isInitialized) aiVision.release()
         super.onDestroy()
         stopStreaming()
         stopHealthLoop()
@@ -794,7 +898,7 @@ class MainActivity : AppCompatActivity() {
         voxelPollJob = null
         scope.cancel()
         clearARAnchors()
-        layerGlbManager?.clearNodes()
+        layerController.clearNodes()
 
         if (::arRuler.isInitialized) {
             arRuler.clearAll()
@@ -826,7 +930,7 @@ class MainActivity : AppCompatActivity() {
             selectedVariantIndex = 0
             show3DPreview = false
             clearARAnchors()
-            layerGlbManager?.clearNodes()
+            layerController.clearNodes()
             sceneBuilder.clearScene()
             transitionTo(AppState.IDLE)
         }
@@ -838,6 +942,35 @@ class MainActivity : AppCompatActivity() {
         scope.launch { doStartSession() }
     }
 
+
+    /**
+     * Умное размещение якоря по нажатию на прицел.
+     * Если опор ещё нет — ставит опору (support), иначе — точку (point).
+     * Работает только в состоянии SCANNING.
+     */
+    private fun onReticleTapped() {
+        if (appState != AppState.SCANNING) {
+            if (appState == AppState.IDLE) {
+                showHint("ℹ️ Нажмите СТАРТ чтобы начать сканирование")
+            }
+            return
+        }
+        val currentState = smartReticle.state
+        if (currentState == SmartReticleView.State.SEARCHING) {
+            showHint("⏳ Подождите — AR ищет поверхности")
+            return
+        }
+        if (currentState == SmartReticleView.State.NO_SURFACE) {
+            showHint("⚠️ Наведите прицел на поверхность (пол, стену)")
+            vibrate(80)
+            return
+        }
+
+        val supportCount = userMarkers.count { it.kind == "support" }
+        val kind = if (supportCount == 0) "support" else "point"
+        placeAnchor(kind = kind)
+    }
+
     private fun onAddSupportClicked() {
         if (appState != AppState.SCANNING) return
 
@@ -847,19 +980,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         val supportCount = userMarkers.count { it.kind == "support" }
-        if (supportCount >= MAX_SUPPORTS) {
-            showHint("⚠️ Достигнут максимум опор: $MAX_SUPPORTS — используй ТОЧКА для доп. меток")
-            return
-        }
 
         if (supportCount == 0) {
             showHint(
-                "📍 Опора поставлена. Теперь обойди её полукругом (~180°) с камерой, " +
-                        "держа на расстоянии 0.5-2 м. Это даст OBS и VDIV для AI."
+                "📍 Первая опора! Теперь обойди вокруг неё (360° за 20-30 сек), " +
+                    "держа камеру на 0.5–2 м. Потом ставь остальные опоры по периметру лесов."
             )
         }
 
         placeAnchor(kind = "support")
+
+        val supports = userMarkers.filter { it.kind == "support" }
+        if (supports.size >= 2 && ::scaffoldRenderer.isInitialized) {
+            val positions = supports.map { Vector3(it.x, it.y, it.z) }
+            scaffoldRenderer.setRootParent(originAnchorNode)
+            scaffoldRenderer.buildScaffold(supports = positions, height = 3.0f, levels = 3)
+            showHint("🏗️ Превью каркаса обновлено (${supports.size} опоры)")
+        }
     }
 
     private fun onAddWaypointClicked() {
@@ -925,7 +1062,7 @@ class MainActivity : AppCompatActivity() {
                     stopStreaming()
                     transitionTo(AppState.MODELING)
                     val mJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
-                    val mList = runCatching { if (::arRuler.isInitialized) arRuler.getSavedMeasurements().map { m -> MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp) } else emptyList<MeasurementConstraint>() }.getOrDefault(emptyList())
+                    val mList = runCatching { if (::arRuler.isInitialized) arRuler.getSavedMeasurements().map { m -> MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), arRuler.machineLabel(m), m.timestamp) } else emptyList<MeasurementConstraint>() }.getOrDefault(emptyList())
                     scope.launch { doRequestModeling(mJson, mList) }
                 }
                 .setNegativeButton("Отмена", null)
@@ -938,7 +1075,7 @@ class MainActivity : AppCompatActivity() {
         transitionTo(AppState.MODELING)
 
         val measurementsJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
-        val measurementConstraints = runCatching { if (::arRuler.isInitialized) arRuler.getSavedMeasurements().map { m -> MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp) } else emptyList<MeasurementConstraint>() }.getOrDefault(emptyList())
+        val measurementConstraints = runCatching { if (::arRuler.isInitialized) arRuler.getSavedMeasurements().map { m -> MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), arRuler.machineLabel(m), m.timestamp) } else emptyList<MeasurementConstraint>() }.getOrDefault(emptyList())
         scope.launch { doRequestModeling(measurementsJson, measurementConstraints) }
     }
 
@@ -1009,40 +1146,23 @@ class MainActivity : AppCompatActivity() {
 
 
     private suspend fun doLockSession(sid: String, option: ScaffoldOption) {
-        lockExportMutex.withLock {
-            val measurementsJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
-            val measurementConstraints = runCatching {
-                if (::arRuler.isInitialized) {
-                    arRuler.getSavedMeasurements().map { m ->
-                        MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), m.label, m.timestamp)
-                    }
-                } else emptyList()
-            }.getOrDefault(emptyList())
-
-            val lockPayload = LockPayload(
-                session_id = sid,
-                selected_variant = option.variant_name,
-                measurements_json = measurementsJson.ifBlank { null },
-                manual_measurements = measurementConstraints
-            )
-            try {
-                val resp = api.lockSession(lockPayload)
-                if (resp.isSuccessful && resp.body() != null) {
-                    lastRevisionId = resp.body()!!.rev_id
-                    return
+        // Gather AR-local measurements (outside the network critical section).
+        val measurementsJson = runCatching { if (::arRuler.isInitialized) arRuler.exportMeasurements() else "" }.getOrDefault("")
+        val measurementConstraints = runCatching {
+            if (::arRuler.isInitialized) {
+                arRuler.getSavedMeasurements().map { m ->
+                    MeasurementConstraint(m.id, m.type.name, m.distance.toDouble(), arRuler.machineLabel(m), m.timestamp)
                 }
-                offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-                crashReporter.recordError("lockSession", IllegalStateException("HTTP ${resp.code()}"))
-            } catch (e: Exception) {
-                offlineQueue.enqueueLock(sid, getCurrentServerUrl())
-                crashReporter.recordError("lockSession", e)
-            }
+            } else emptyList()
+        }.getOrDefault(emptyList())
 
-            runCatching { api.exportLatest(sid) }.onSuccess { exp ->
-                val rev = exp.body()?.revision_id ?: exp.body()?.rev_id.orEmpty()
-                if (rev.isNotBlank()) lastRevisionId = rev
-            }
-        }
+        val lockPayload = LockPayload(
+            session_id = sid,
+            selected_variant = option.variant_name,
+            measurements_json = measurementsJson.ifBlank { null },
+            manual_measurements = measurementConstraints
+        )
+        sessionLockClient.lock(sid, lockPayload)?.let { lastRevisionId = it }
     }
 
     private suspend fun loadExportLayersInternal(
@@ -1064,48 +1184,16 @@ class MainActivity : AppCompatActivity() {
                 exportNotReady409 = false
                 val bundle = response.body()!!
                 val rev = bundle.revision_id ?: bundle.rev_id.orEmpty()
-                if (rev.isNotBlank() && loadedExportRevId != null && loadedExportRevId != rev) {
-                    layerGlbManager?.clearAll()
-                }
                 if (rev.isNotBlank()) {
-                    loadedExportRevId = rev
                     crashReporter.setLastExportRev(rev)
                     updateFieldDiag()
                 }
 
-                // Revision-aware caching for layers
-                if (layerGlbManager == null) {
-                    layerGlbManager = LayerGlbManager(this@MainActivity, sceneView, getCurrentServerUrl())
-                }
-                layerGlbManager?.setCurrentRevision(rev)
-
-                val layers = bundle.ui?.layers.orEmpty()
-                exportedLayers = layers
-                exportedLayerPaths.clear()
-                for (layer in layers) {
-                    val path = layer.file?.glb?.path ?: layer.file?.path
-                    if (!path.isNullOrBlank()) exportedLayerPaths[layer.id] = path
-                }
-
-                if (originAnchorNode == null) {
+                val originMissing = layerController.applyBundle(bundle, originAnchorNode)
+                if (originMissing) {
                     if (showDialog) showLayersDialog()
                     showHint("⚠️ Сначала поставь origin anchor (кнопка опоры), потом загружай слои")
                     return
-                }
-
-                layerGlbManager?.setLayersRoot(originAnchorNode)
-
-                for (layer in layers) {
-                    val path = exportedLayerPaths[layer.id]
-                    if (path.isNullOrBlank()) continue
-                    val key = "layer_visible_${layer.id}"
-                    val def = layer.default_on ?: true
-                    val wantVisible = settingsPrefs.getBoolean(key, def)
-                    if (wantVisible) {
-                        runCatching { layerGlbManager?.loadOrShowLayer(layer.id, path) }
-                    } else {
-                        layerGlbManager?.setVisible(layer.id, false)
-                    }
                 }
 
                 if (showDialog) showLayersDialog()
@@ -1155,7 +1243,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLayersDialog() {
-        if (exportedLayers.isEmpty()) {
+        val layers = layerController.layers()
+        if (layers.isEmpty()) {
             showHint("⚠️ Нет доступных слоёв")
             return
         }
@@ -1165,7 +1254,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(48, 24, 48, 8)
         }
 
-        exportedLayers.forEach { layer ->
+        layers.forEach { layer ->
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 val p = (resources.displayMetrics.density * 8).toInt()
@@ -1182,25 +1271,25 @@ class MainActivity : AppCompatActivity() {
                 setOnCheckedChangeListener { _, checked ->
                     settingsPrefs.edit().putBoolean(key, checked).apply()
                     if (checked) {
-                        val path = exportedLayerPaths[layer.id]
+                        val path = layerController.pathFor(layer.id)
                         if (path.isNullOrBlank()) {
                             showHint("⚠️ Нет пути для слоя ${layer.id}")
                         } else {
-                            scope.launch { runCatching { layerGlbManager?.loadOrShowLayer(layer.id, path) } }
+                            scope.launch { runCatching { layerController.loadOrShow(layer.id, path) } }
                         }
                     } else {
-                        layerGlbManager?.setVisible(layer.id, false)
+                        layerController.setVisible(layer.id, false)
                     }
                 }
             }
             row.addView(label)
             row.addView(sw)
             container.addView(row)
-            layerGlbManager?.setVisible(layer.id, sw.isChecked)
+            layerController.setVisible(layer.id, sw.isChecked)
             if (sw.isChecked) {
-                val path = exportedLayerPaths[layer.id]
+                val path = layerController.pathFor(layer.id)
                 if (!path.isNullOrBlank()) {
-                    scope.launch { runCatching { layerGlbManager?.loadOrShowLayer(layer.id, path) } }
+                    scope.launch { runCatching { layerController.loadOrShow(layer.id, path) } }
                 }
             }
         }
@@ -1306,7 +1395,6 @@ class MainActivity : AppCompatActivity() {
     // ══════════════════════════════════════════════════════════════════════
 
     private fun updateConnectionUi(status: ConnectionStatus, detail: String? = null) {
-        currentConnStatus = status
         lastConnectionDetail = detail
 
         val (dotRes, label) = when (status) {
@@ -1342,7 +1430,6 @@ class MainActivity : AppCompatActivity() {
                 )
                 withContext(Dispatchers.Main) {
                     val st = netState.getStatus()
-                    currentConnStatus = st
                     viewModel.setConnectionState(st, base)
                 }
                 val sid = currentSessionId
@@ -1390,7 +1477,7 @@ class MainActivity : AppCompatActivity() {
                 connectionStatus = currentConnStatus.name,
                 serverBaseUrl = baseUrl,
                 lastExportRev = lastRevisionId,
-                loadedExportRev = loadedExportRevId,
+                loadedExportRev = layerController.loadedRevId,
                 lastRevisionId = lastRevisionId,
                 clientStats = buildClientStats()
             )
@@ -1470,7 +1557,16 @@ class MainActivity : AppCompatActivity() {
     // ══════════════════════════════════════════════════════════════════════
 
     private fun toggleRulerMode() {
-        if (!::arRuler.isInitialized) return
+        if (!::arRuler.isInitialized) {
+            // The ruler is created once the AR scene is ready. Try to bring it up
+            // now and, if it still isn't ready, tell the user why instead of
+            // silently doing nothing (a common "the ruler doesn't work" report).
+            startArIfReady()
+            if (!::arRuler.isInitialized) {
+                showHint("AR ещё не готов — наведите камеру на поверхность и подождите")
+                return
+            }
+        }
 
         rulerMode = !rulerMode
 
@@ -1769,6 +1865,8 @@ class MainActivity : AppCompatActivity() {
                 hideControls(btnAddPoint, btnAddWaypoint, btnScan, btn3DModel, btnAnalyze)
                 variantPanel.visibility = View.GONE
                 btnRulerMode.visibility = View.GONE
+                undoRedoPanel.visibility = View.GONE
+                setHudScanMode(false)
 
                 messageCenter.setHud(getString(R.string.state_idle))
                 updateModeStatus(getString(R.string.state_idle).uppercase())
@@ -1777,6 +1875,8 @@ class MainActivity : AppCompatActivity() {
 
             AppState.CONNECTING -> {
                 hideAllControls()
+                undoRedoPanel.visibility = View.GONE
+                setHudScanMode(false)
                 messageCenter.setHud(getString(R.string.state_connecting))
                 updateModeStatus("ПОДКЛЮЧЕНИЕ")
                 startBlinkAnimation(tvAiHint)
@@ -1787,6 +1887,8 @@ class MainActivity : AppCompatActivity() {
                 showControls(btnAddPoint, btnAddWaypoint, btnScan, btn3DModel, btnAnalyze)
                 btnRulerMode.visibility = View.VISIBLE
                 variantPanel.visibility = View.GONE
+                undoRedoPanel.visibility = View.VISIBLE
+                setHudScanMode(true)
 
                 btnAnalyze.isEnabled = userMarkers.count { it.kind == "support" } >= 1
 
@@ -1797,6 +1899,8 @@ class MainActivity : AppCompatActivity() {
 
             AppState.MODELING -> {
                 hideAllControls()
+                undoRedoPanel.visibility = View.GONE
+                setHudScanMode(false)
                 messageCenter.setHud(getString(R.string.state_modeling))
                 updateModeStatus("МОДЕЛИРОВАНИЕ")
                 startBlinkAnimation(tvAiHint)
@@ -1806,6 +1910,7 @@ class MainActivity : AppCompatActivity() {
                 showControls(btnAddPoint, btnAddWaypoint, btnAnalyze)
                 hideControls(btnStart, btnScan)
                 variantPanel.visibility = View.GONE
+                if (::smartReticle.isInitialized) smartReticle.visibility = View.VISIBLE
 
                 messageCenter.setHud(getString(R.string.state_preview))
                 updateModeStatus("ПРЕВЬЮ")
@@ -1825,6 +1930,8 @@ class MainActivity : AppCompatActivity() {
                 btnStart.text = "ЗАНОВО"
                 hideControls(btnAddPoint, btnAddWaypoint, btnScan, btn3DModel, btnAnalyze)
                 variantPanel.visibility = View.GONE
+                undoRedoPanel.visibility = View.GONE
+                setHudScanMode(false)
 
                 updateModeStatus("ЗАВЕРШЕНО")
                 stopBlinkAnimation(tvAiHint)
@@ -1835,6 +1942,64 @@ class MainActivity : AppCompatActivity() {
     // ══════════════════════════════════════════════════════════════════════
     // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (остальной код аналогично предыдущей версии)
     // ══════════════════════════════════════════════════════════════════════
+
+    // ══════════════════════════════════════════════════════════════════════
+    // UI SCAN MODE ANIMATION
+    // При сканировании сдвигаем боковые панели к краям и тускним метрики,
+    // освобождая максимальную площадь камеры. При выходе — возвращаем.
+    // ══════════════════════════════════════════════════════════════════════
+    private fun setHudScanMode(scanning: Boolean) {
+        val dur = 380L
+        val density = resources.displayMetrics.density
+        if (scanning) {
+            // Боковые панели: сдвиг к краям + opacity 30%
+            llCoordsPanel.animate()
+                .alpha(0.28f)
+                .translationX(-20f * density)
+                .setDuration(dur)
+                .start()
+            llStatusPanel.animate()
+                .alpha(0.28f)
+                .translationX(20f * density)
+                .setDuration(dur)
+                .start()
+            // HUD метрики: чуть тускнеем (сдвиг не нужен — они уже вверху)
+            llHudMetrics.animate()
+                .alpha(0.45f)
+                .setDuration(dur)
+                .start()
+            // Индикатор режима — прячем, не нужен во время скана
+            modeIndicator.animate()
+                .alpha(0f)
+                .setDuration(dur / 2)
+                .withEndAction { modeIndicator.visibility = View.GONE }
+                .start()
+        } else {
+            // Восстанавливаем все
+            llCoordsPanel.animate()
+                .alpha(0.85f)
+                .translationX(0f)
+                .setDuration(dur)
+                .start()
+            llStatusPanel.animate()
+                .alpha(0.85f)
+                .translationX(0f)
+                .setDuration(dur)
+                .start()
+            llHudMetrics.animate()
+                .alpha(1f)
+                .setDuration(dur)
+                .start()
+            modeIndicator.visibility = View.VISIBLE
+            modeIndicator.animate()
+                .alpha(1f)
+                .setDuration(dur / 2)
+                .start()
+        }
+        if (::smartReticle.isInitialized) {
+            smartReticle.visibility = if (scanning) View.VISIBLE else View.INVISIBLE
+        }
+    }
 
     private fun showControls(vararg buttons: Button) {
         buttons.forEach { it.visibility = View.VISIBLE }
@@ -1868,6 +2033,11 @@ class MainActivity : AppCompatActivity() {
         if (!scanHintsVisible && clamped >= 1.0 && clamped < qualityMinForAnalyze.toDouble()) {
             showHint("⚠️ Качество: ${clamped.toInt()}%. Нужно >= $qualityMinForAnalyze%")
         }
+    }
+
+    private fun updateReadinessUI() {
+        val r = viewModel.readiness.value
+        updateReadinessUI(r.ready, r.score, r.metrics)
     }
 
     private fun updateReadinessUI(
@@ -1905,29 +2075,7 @@ class MainActivity : AppCompatActivity() {
             "OBS ${obsPct}%/${minObsPct}% | VDIV ${vdiv}/${minViews} | VP ${vp}/${minVp}" +
                     (if (ready == true) " ✅ READY" else "")
 
-        val coachLine: String = when {
-            ready == true -> ""
-            obsPct < minObsPct -> buildString {
-                append("👣 Обойди опору полукругом 180° (~20-30 сек)")
-                val gap = minObsPct - obsPct
-                if (gap > 20) append(" — нужно ещё ${gap}% покрытия")
-            }
-
-            vdiv < minViews -> buildString {
-                val missing = minViews - vdiv
-                append("🔄 Обойди с ${missing + 1} стороны (разные углы, шаг 60°)")
-            }
-
-            vp < minVp -> buildString {
-                val missing = minVp - vp
-                append(
-                    "📸 Сделай ещё ${missing} позици${if (missing == 1) "ю" else "и"}" +
-                            " — шагни влево/вправо или наклони камеру"
-                )
-            }
-
-            else -> "✅ Данных достаточно — нажми АНАЛИЗ"
-        }
+        val coachLine: String = if (ready == true) "" else buildReadinessScanHint(metrics)
 
         val netSuffix = when (currentConnStatus) {
             ConnectionStatus.OFFLINE -> " | NET OFFLINE"
@@ -1936,8 +2084,8 @@ class MainActivity : AppCompatActivity() {
         }
         val pollSuffix = buildString {
             if (exportNotReady409) append(" | NO_EXPORT")
-            if (exportPollFailures > 0) append(" | EXP RETRY")
-            if (readinessPollFailures > 0) append(" | RDY RETRY")
+            if (exportPoller.failures > 0) append(" | EXP RETRY")
+            if (readinessPoller.failures > 0) append(" | RDY RETRY")
         }
 
         tvReadinessDetail.text = buildString {
@@ -1962,6 +2110,34 @@ class MainActivity : AppCompatActivity() {
 
         if (ready != true && s0 >= 0.5 && s0 < 0.9 && coachLine.isNotEmpty()) {
             showHint(coachLine)
+        }
+    }
+
+    private fun buildReadinessScanHint(metrics: ReadinessMetrics?): String {
+        if (metrics == null) return "📡 Сканируй медленно, держи камеру на уровне пояса"
+        val obs = ((metrics.observed_ratio) * 100.0).toInt()
+        val vdiv = metrics.view_diversity
+        val vp = metrics.viewpoints
+        val minObs = ((metrics.min_observed_ratio) * 100.0).toInt()
+        val minVdiv = metrics.min_views_per_anchor
+        val minVp = metrics.min_viewpoints
+        return buildString {
+            if (obs < minObs) append("👣 Обойди опору полукругом (OBS $obs%→$minObs% нужно)\n")
+            if (vdiv < minVdiv) append("🔄 Нужно ещё ${minVdiv - vdiv} ракурсов (60°+ шаг)\n")
+            if (vp < minVp) append("📸 Ещё ${minVp - vp} позиций — шагни в сторону")
+        }.trim().ifEmpty { "✅ Данных достаточно — нажми АНАЛИЗ" }
+    }
+
+    private fun applyYoloResults(detections: List<YoloInferenceEngine.Detection>) {
+        lastYoloDetections = detections
+        val hazards = detections.filter { it.isHazard }
+        if (hazards.isNotEmpty()) {
+            vibrate(200)
+            showHint("⚠️ ОПАСНОСТЬ: ${hazards.joinToString { it.label.uppercase() }} обнаружен!")
+        }
+        if (detections.isNotEmpty()) {
+            val summary = detections.groupBy { it.label }.entries.joinToString(" | ") { "${it.key}×${it.value.size}" }
+            tvFieldDiag?.text = "YOLO: $summary"
         }
     }
 
@@ -2001,7 +2177,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private suspend fun maybeFetchCompatWarnings(sessionId: String) {
-        if (lastReadinessReady != false) return
+        if (viewModel.readiness.value.ready != false) return
         val now = System.currentTimeMillis()
         if (now - lastCompatHintsAtMs < 20000L) return
 
@@ -2101,8 +2277,8 @@ class MainActivity : AppCompatActivity() {
 
         if ((originAnchorNode?.name ?: "") == anchorId) {
             originAnchorNode = null
-            layerGlbManager?.setLayersRoot(null)
-            layerGlbManager?.clearAll()
+            layerController.setLayersRoot(null)
+            layerController.clearAll()
             if (::voxelVisualizer.isInitialized) {
                 voxelVisualizer.setRootParent(null)
                 voxelVisualizer.hideVoxels()
@@ -2205,12 +2381,7 @@ class MainActivity : AppCompatActivity() {
     private fun updatePointsCount() {
         val sup = userMarkers.count { it.kind == "support" }
         val pts = userMarkers.size
-        val supLeft = MAX_SUPPORTS - sup
-        tvPointsCount.text = buildString {
-            append("ОПОР:$sup/$MAX_SUPPORTS")
-            if (supLeft > 0) append(" (ещё ${supLeft} можно)")
-            append(" | ТОЧЕК:${pts - sup}")
-        }
+        tvPointsCount.text = "ОПОР:$sup | ТОЧЕК:${pts - sup}"
     }
 
     private fun updateCameraCoordinates() {
@@ -2295,17 +2466,14 @@ class MainActivity : AppCompatActivity() {
                 val response = api.startSession()
                 if (response.isSuccessful && response.body() != null) {
                     val sessionId = response.body()!!.session_id
-                    currentSessionId = sessionId
+                    viewModel.setSessionId(sessionId)
                     rememberSessionInHistory(sessionId)
 
                     // Reset export/layer state for new session.
-                    loadedExportRevId = null
+                    layerController.reset()
                     exportNotReady409 = false
                     pendingAutoReloadRev = null
                     lastAutoReloadAtMs = 0L
-                    exportedLayers = emptyList()
-                    exportedLayerPaths.clear()
-                    layerGlbManager?.clearAll()
 
                     consecutiveFailures = 0
                     frameCount = 0
@@ -2313,7 +2481,6 @@ class MainActivity : AppCompatActivity() {
                     viewModel.setConnectionState(ConnectionStatus.ONLINE, base)
                     showHint("✓ Сессия создана")
                     startReadinessPolling(sessionId)
-                    viewModel.setSessionId(sessionId)
                     syncAnchorsToServer(allowEmpty = true)
                     transitionTo(AppState.SCANNING)
                     startStreamingLoop()
@@ -2346,7 +2513,7 @@ class MainActivity : AppCompatActivity() {
             while (isActive && isStreaming && currentSessionId == sid) {
                 val nowMs = System.currentTimeMillis()
                 if (nowMs < nextStreamAttemptAtMs) {
-                    delay(min(streamIntervalMs, nextStreamAttemptAtMs - nowMs))
+                    delay(min(streamTuner.intervalMs, nextStreamAttemptAtMs - nowMs))
                     continue
                 }
                 if (streamSendJob?.isActive == true) {
@@ -2356,7 +2523,7 @@ class MainActivity : AppCompatActivity() {
                     streamSendJob = launch(Dispatchers.IO) {
                         val t0 = System.nanoTime()
                         val ok = try {
-                            withTimeout(2_500L) { sendFrameWith(streamJpegQuality, streamPointCap) }
+                            withTimeout(2_500L) { sendFrameWith(streamTuner.jpegQuality, streamTuner.pointCap) }
                         } catch (_: Exception) {
                             false
                         }
@@ -2384,7 +2551,6 @@ class MainActivity : AppCompatActivity() {
                                 )
                                 withContext(Dispatchers.Main) {
                                     val st = netState.getStatus()
-                                    currentConnStatus = st
                                     viewModel.setConnectionState(st, baseUrl)
                                 }
                             }
@@ -2412,7 +2578,7 @@ class MainActivity : AppCompatActivity() {
 
                 updateFrameCounter()
                 updateCameraCoordinates()
-                val waitMs = if (streamImmediateNextTick) 0L else streamIntervalMs
+                val waitMs = if (streamImmediateNextTick) 0L else streamTuner.intervalMs
                 streamImmediateNextTick = false
                 delay(waitMs)
             }
@@ -2421,7 +2587,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun ensureReleasePollingRunning(sessionId: String) {
         // Avoid double start on rotation/resume; restart only if session changed or jobs are not active.
-        if (pollingSessionId != sessionId || exportPollJob?.isActive != true || readinessPollJob?.isActive != true) {
+        if (pollingSessionId != sessionId || !exportPoller.isRunning() || !readinessPoller.isRunning()) {
             stopReleasePolling()
             pollingSessionId = sessionId
             startExportLatestPolling(sessionId)
@@ -2429,271 +2595,70 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startExportLatestPolling(sessionId: String) {
-        exportPollJob?.cancel()
-        exportPollInFlight = false
-        exportPollFailures = 0
-        exportFailStreak = 0
-        nextExportPollAtMs = 0L
+    private fun startExportLatestPolling(sessionId: String) = exportPoller.start(sessionId)
 
-        exportPollJob = lifecycleScope.launch {
-            // Poll export/latest so layers update without manual actions.
-            while (isActive && isStreaming && currentSessionId == sessionId) {
-                if (!isUiActive) {
-                    delay(500L)
-                    continue
-                }
-                val now = System.currentTimeMillis()
-                if (now < nextExportPollAtMs) {
-                    delay(min(2000L, nextExportPollAtMs - now))
-                    continue
-                }
+    /**
+     * Handle a confirmed export revision: gate on the origin anchor, then auto-reload
+     * the scaffold layers with a cooldown to avoid thrashing. The loaded revision is
+     * owned by `layerController`; the cooldown bookkeeping (`pendingAutoReloadRev`,
+     * `lastAutoReloadAtMs`) stays here as it is specific to this auto-reload policy.
+     */
+    private suspend fun onExportLatestRevision(sessionId: String, rev: String) {
+        if (originAnchorNode == null) {
+            pendingExportRevId = rev
+            return
+        }
 
-                if (!isStreaming || currentSessionId != sessionId) break
-                if (exportPollInFlight) continue
-                exportPollInFlight = true
-                try {
-                    // Shared backoff gate (export/latest participates in the same policy).
-                    netState.waitIfNeeded("export_latest")
-
-                    val resp = runCatching { lockExportMutex.withLock { api.exportLatest(sessionId) } }.getOrNull()
-                    if (resp == null) {
-                        exportPollFailures += 1
-                        exportFailStreak += 1
-                        val nextAt = netState.reportResult(tag = "export_latest", success = false, baseMs = 6500L, maxMs = 30_000L, errorDetail = "export_null")
-                        nextExportPollAtMs = nextAt
-                        crashReporter.recordReproError(endpoint = "/session/" + sessionId + "/export/latest", errorSnippet = "export/latest: null resp")
-                        continue
-                    }
-                    // 409 NO_EXPORT is expected early - ignore quietly.
-                    if (resp.code() == 409) {
-                        exportNotReady409 = true
-                        exportPollFailures = 0
-                        exportFailStreak = 0
-                        crashReporter.recordReproResponse(
-                            endpoint = "/session/" + sessionId + "/export/latest",
-                            httpCode = resp.code(),
-                            bodySnippet = "409 NO_EXPORT"
-                        )
-                        val nextAt = netState.reportResult(tag = "export_latest", success = true, baseMs = 6500L, maxMs = 30_000L)
-                        nextExportPollAtMs = nextAt
-                        withContext(Dispatchers.Main) {
-                            updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
-                        }
-                        continue
-                    }
-                    if (!resp.isSuccessful || resp.body() == null) {
-                        exportPollFailures += 1
-                        exportFailStreak += 1
-                        crashReporter.recordReproError(
-                            endpoint = "/session/" + sessionId + "/export/latest",
-                            httpCode = resp.code(),
-                            errorSnippet = ("export/latest failed: " + resp.code()).take(2048)
-                        )
-                        val nextAt = netState.reportResult(tag = "export_latest", success = false, baseMs = 6500L, maxMs = 30_000L, errorDetail = "export_http_" + resp.code())
-                        nextExportPollAtMs = nextAt
-                        if (exportFailStreak >= 3) {
-                            maybeAutoReport("export_latest_failures")
-                            exportFailStreak = 0
-                        }
-                        continue
-                    }
-
-                    exportNotReady409 = false
-                    exportPollFailures = 0
-                    exportFailStreak = 0
-                    val bundle = resp.body()!!
-                    val rev = bundle.revision_id ?: bundle.rev_id.orEmpty()
-                    if (rev.isBlank()) continue
-
-                    crashReporter.recordReproResponse(
-                        endpoint = "/session/" + sessionId + "/export/latest",
-                        httpCode = resp.code(),
-                        bodySnippet = ReportSanitizer.sanitizeReproBody("/session/" + sessionId + "/export/latest", bundle)
-                    )
-
-                    val nextAt = netState.reportResult(tag = "export_latest", success = true, baseMs = 6500L, maxMs = 30_000L)
-                    nextExportPollAtMs = nextAt
-
-                    if (originAnchorNode == null) {
-                        pendingExportRevId = rev
-                        continue
-                    }
-
-                    val now2 = System.currentTimeMillis()
-                    if (loadedExportRevId == null) {
-                        // First seen rev, try loading if origin exists.
-                        pendingExportRevId = rev
-                        lastAutoReloadAtMs = now2
-                        pendingAutoReloadRev = null
-                        loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
-                    } else if (loadedExportRevId != rev) {
-                        // New revision - auto reload, but with cooldown to avoid thrashing.
-                        val dt = now2 - lastAutoReloadAtMs
-                        if (dt < AUTO_RELOAD_COOLDOWN_MS) {
-                            pendingAutoReloadRev = rev
-                        } else {
-                            lastAutoReloadAtMs = now2
-                            pendingAutoReloadRev = null
-                            loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
-                        }
-                    }
-
-                    // If we delayed reload due to cooldown, apply it once cooldown passes.
-                    val pending = pendingAutoReloadRev
-                    if (pending != null && pending.isNotBlank() && (System.currentTimeMillis() - lastAutoReloadAtMs) >= AUTO_RELOAD_COOLDOWN_MS) {
-                        lastAutoReloadAtMs = System.currentTimeMillis()
-                        pendingAutoReloadRev = null
-                        loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
-                    }
-                } catch (e: Exception) {
-                    exportPollFailures += 1
-                    exportFailStreak += 1
-                    crashReporter.recordReproError(endpoint = "/session/" + sessionId + "/export/latest", errorSnippet = (e.message ?: "exception").take(2048))
-                    val nextAt = netState.reportResult(tag = "export_latest", success = false, baseMs = 6500L, maxMs = 30_000L, errorDetail = e.message)
-                    nextExportPollAtMs = nextAt
-                } finally {
-                    exportPollInFlight = false
-                    withContext(Dispatchers.Main) {
-                        val st = netState.getStatus()
-                        currentConnStatus = st
-                        viewModel.setConnectionState(st, getCurrentServerUrl().trimEnd('/'))
-                        runCatching { updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics) }
-                    }
-                }
+        val now2 = System.currentTimeMillis()
+        if (layerController.loadedRevId == null) {
+            // First seen rev, try loading if origin exists.
+            pendingExportRevId = rev
+            lastAutoReloadAtMs = now2
+            pendingAutoReloadRev = null
+            loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
+        } else if (layerController.loadedRevId != rev) {
+            // New revision - auto reload, but with cooldown to avoid thrashing.
+            val dt = now2 - lastAutoReloadAtMs
+            if (dt < AUTO_RELOAD_COOLDOWN_MS) {
+                pendingAutoReloadRev = rev
+            } else {
+                lastAutoReloadAtMs = now2
+                pendingAutoReloadRev = null
+                loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
             }
+        }
+
+        // If we delayed reload due to cooldown, apply it once cooldown passes.
+        val pending = pendingAutoReloadRev
+        if (pending != null && pending.isNotBlank() && (System.currentTimeMillis() - lastAutoReloadAtMs) >= AUTO_RELOAD_COOLDOWN_MS) {
+            lastAutoReloadAtMs = System.currentTimeMillis()
+            pendingAutoReloadRev = null
+            loadExportLayersInternal(sessionId, showDialog = false, showOkHint = false)
         }
     }
 
-    private fun startReadinessPolling(sessionId: String) {
-        readinessPollJob?.cancel()
-        readinessPollFailures = 0
-        nextReadinessPollAtMs = 0L
-        readinessPollJob = lifecycleScope.launch {
-            while (isActive && isStreaming && currentSessionId == sessionId) {
-                if (!isUiActive) {
-                    delay(500L)
-                    continue
-                }
-                val now = System.currentTimeMillis()
-                if (now < nextReadinessPollAtMs) {
-                    delay(min(750L, nextReadinessPollAtMs - now))
-                    continue
-                }
+    private fun startReadinessPolling(sessionId: String) = readinessPoller.start(sessionId)
 
-                if (!isStreaming || currentSessionId != sessionId) break
-
-                // Shared backoff gate (readiness participates in the same policy).
-                netState.waitIfNeeded("readiness")
-
-                val resp = runCatching { api.getReadiness(sessionId) }.getOrNull()
-                if (resp == null || !resp.isSuccessful || resp.body() == null) {
-                    readinessPollFailures += 1
-                    withContext(Dispatchers.Main) {
-                        updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
-                    }
-                    val nextAt = netState.reportResult(
-                        tag = "readiness",
-                        success = false,
-                        baseMs = 1500L,
-                        maxMs = 12_000L,
-                        errorDetail = "readiness_http"
-                    )
-                    nextReadinessPollAtMs = nextAt
-
-                    crashReporter.recordReproError(
-                        endpoint = "/session/" + sessionId + "/readiness",
-                        httpCode = resp?.code(),
-                        errorSnippet = "readiness failed"
-                    )
-
-                    withContext(Dispatchers.Main) {
-                        val st = netState.getStatus()
-                        currentConnStatus = st
-                        viewModel.setConnectionState(st, getCurrentServerUrl().trimEnd('/'))
-                        updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
-                    }
-                    continue
-                }
-
-                readinessPollFailures = 0
-                val body = resp.body()!!
-
-                withContext(Dispatchers.Main) {
-                    lastReadinessReady = body.ready
-                    lastReadinessScore = body.score
-                    lastReadinessMetrics = body.readiness_metrics
-                    lastReadinessProfile = body.readiness_profile
-                    lastReadinessReasons = body.reasons
-                    updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
-                    maybeEmitReadinessHints(body.ready, body.reasons, body.readiness_metrics)
-                }
-
-                crashReporter.recordReproResponse(
-                    endpoint = "/session/" + sessionId + "/readiness",
-                    httpCode = resp.code(),
-                    bodySnippet = ReportSanitizer.sanitizeReproBody("/session/" + sessionId + "/readiness", body)
-                )
-
-                val nextAt = netState.reportResult(tag = "readiness", success = true, baseMs = 1500L, maxMs = 12_000L)
-                nextReadinessPollAtMs = nextAt
-
-                withContext(Dispatchers.Main) {
-                    val st = netState.getStatus()
-                    currentConnStatus = st
-                    viewModel.setConnectionState(st, getCurrentServerUrl().trimEnd('/'))
-                    updateReadinessUI(lastReadinessReady, lastReadinessScore, lastReadinessMetrics)
-                }
-            }
-        }
+    /** Main-thread render after each readiness poll (body == null on failure). */
+    private fun onReadinessResult(body: ReadinessResponse?) {
+        if (body != null) lastReadinessProfile = body.readiness_profile
+        updateReadinessUI()
+        if (body != null) maybeEmitReadinessHints(body.ready, body.reasons, body.readiness_metrics)
     }
 
-    private fun stopReadinessPolling() {
-        readinessPollJob?.cancel()
-        readinessPollJob = null
-    }
+    private fun stopReadinessPolling() = readinessPoller.stop()
 
     private fun stopReleasePolling() {
-        exportPollJob?.cancel()
-        exportPollJob = null
-        readinessPollJob?.cancel()
-        readinessPollJob = null
-        exportPollInFlight = false
-        exportPollFailures = 0
-        readinessPollFailures = 0
-        nextExportPollAtMs = 0L
-        nextReadinessPollAtMs = 0L
+        exportPoller.stop()
+        readinessPoller.stop()
         exportNotReady409 = false
         pendingAutoReloadRev = null
         pollingSessionId = null
     }
 
-    private fun tuneStreaming(ok: Boolean, sendMs: Long) {
-        // EWMA send time for adaptive throttling.
-        val x = sendMs.toDouble()
-        sendTimeEwmaMs = if (sendTimeEwmaMs <= 0.0) x else (0.8 * sendTimeEwmaMs + 0.2 * x)
+    private fun tuneStreaming(ok: Boolean, sendMs: Long) = streamTuner.onResult(ok, sendMs)
 
-        val minInterval = 300L
-        val maxInterval = 1500L
-
-        if (!ok) {
-            // Back off: reduce quality and point cap quickly.
-            streamJpegQuality = (streamJpegQuality - 6).coerceAtLeast(45)
-            streamPointCap = (streamPointCap - 40).coerceAtLeast(120)
-            streamIntervalMs = (streamIntervalMs + 150L).coerceAtMost(maxInterval)
-            return
-        }
-
-        // Success: slowly restore quality/cap, and adapt interval to keep CPU/network stable.
-        streamJpegQuality = (streamJpegQuality + 1).coerceAtMost(80)
-        streamPointCap = (streamPointCap + 10).coerceAtMost(450)
-
-        val target = (sendTimeEwmaMs * 1.3).toLong().coerceIn(minInterval, maxInterval)
-        streamIntervalMs = ((0.85 * streamIntervalMs.toDouble()) + (0.15 * target.toDouble())).toLong()
-            .coerceIn(minInterval, maxInterval)
-    }
-
-    private suspend fun sendFrame(): Boolean = sendFrameWith(streamJpegQuality, streamPointCap)
+    private suspend fun sendFrame(): Boolean = sendFrameWith(streamTuner.jpegQuality, streamTuner.pointCap)
 
     private suspend fun sendFrameWith(jpegQuality: Int, pointCap: Int): Boolean {
         val sid = currentSessionId ?: return false
@@ -2815,6 +2780,10 @@ class MainActivity : AppCompatActivity() {
                     basePayload["manual_measurements"] = manualMeasurements
                 }
 
+                if (lastYoloDetections.isNotEmpty()) {
+                    basePayload["yolo_detections"] = aiVision.detectionsToServerPayload(lastYoloDetections)
+                }
+
                 val dp = depthPolicy
                 val shouldSendDepth = dp?.shouldAttemptDepth() == true
                 if (shouldSendDepth) {
@@ -2857,39 +2826,22 @@ class MainActivity : AppCompatActivity() {
                 this["client_stats"] = mapOf(
                     "jpeg_quality" to jpegQuality,
                     "point_cap" to pointCap,
-                    "send_interval_ms" to streamIntervalMs,
+                    "send_interval_ms" to streamTuner.intervalMs,
                     "last_send_ms" to lastSendMs,
                     "conn" to currentConnStatus.name,
                 ) + (depthPolicy?.toMap() ?: emptyMap())
                 HeavyOps.withPermit {
                     val nv21 = ImageUtils.yuvCopyToNv21(packet.yuv, swapUv = packet.swapUv)
                     this["rgb_base64"] = ImageUtils.nv21ToJpegBase64(nv21.data, nv21.width, nv21.height, jpegQuality)
+                    if (::aiVision.isInitialized) aiVision.processFrame(this["rgb_base64"] as String)
                     val acquired = packet.depth
                     if (acquired != null) {
                         try {
                             val depthFrame = DepthUtils.copyDepth16(acquired.image, acquired.isRaw)
-                            val rawBytes = depthFrame.bytes
-                            val safeBytes = if (rawBytes.size > DepthPolicy.MAX_DEPTH_PAYLOAD_BYTES) {
-                                Log.w("Depth", "Depth payload too large: ${rawBytes.size} bytes, truncating to ${DepthPolicy.MAX_DEPTH_PAYLOAD_BYTES}")
-                                val w = depthFrame.width
-                                val h = depthFrame.height / 2
-                                val ds = ByteArray(w * h * 2)
-                                for (row in 0 until h) {
-                                    System.arraycopy(rawBytes, row * 2 * w * 2, ds, row * w * 2, w * 2)
-                                }
-                                this["depth_width"] = w
-                                this["depth_height"] = h
-                                this["depth_downsampled"] = true
-                                ds
-                            } else rawBytes
-                            this["depth_base64"] = DepthUtils.depthBytesToBase64(safeBytes)
-                            if (!this.containsKey("depth_width")) this["depth_width"] = depthFrame.width
-                            if (!this.containsKey("depth_height")) this["depth_height"] = depthFrame.height
-                            this["depth_scale_m_per_unit"] = depthFrame.scaleMPerUnit
-                            this["depth_scale"] = depthFrame.scaleMPerUnit
-                            this["depth_is_raw"] = depthFrame.isRaw
-                            this["depth_format"] = depthFrame.format
-                            this["depth_invalid_value"] = depthFrame.invalidValue
+                            // Uniform downsample if oversized (preserves aspect ratio).
+                            this.putAll(
+                                DepthUtils.buildDepthPayload(depthFrame, DepthPolicy.MAX_DEPTH_PAYLOAD_BYTES)
+                            )
                         } finally {
                             runCatching { acquired.image.close() }
                         }
@@ -3054,9 +3006,9 @@ class MainActivity : AppCompatActivity() {
 
             if (model.status == "NEEDS_SCAN" || opts.isEmpty()) {
                 current3DModel = null
-                val coachMsg = buildNeedsScanHint(model.reasons.orEmpty(), lastReadinessMetrics)
+                val coachMsg = buildNeedsScanHint(model.reasons.orEmpty(), viewModel.readiness.value.metrics)
                 showHint(coachMsg)
-                updateReadinessUI(false, lastReadinessScore, lastReadinessMetrics)
+                updateReadinessUI(false, viewModel.readiness.value.score, viewModel.readiness.value.metrics)
                 transitionTo(AppState.SCANNING)
                 startStreamingLoop()
                 return@withContext
@@ -3088,7 +3040,7 @@ class MainActivity : AppCompatActivity() {
                 reason.startsWith("LOW_OBSERVED_RATIO") -> {
                     val obs = ((metrics?.observed_ratio ?: 0.0) * 100.0).toInt()
                     val minObs = ((metrics?.min_observed_ratio ?: 0.0) * 100.0).toInt()
-                    "👣 Обойди опору полукругом 180° (OBS ${obs}%→${minObs}% нужно)"
+                    "👣 Обойди опору полукругом (OBS ${obs}%→${minObs}% нужно)"
                 }
 
                 reason.startsWith("LOW_VIEW_DIVERSITY") -> {
@@ -3190,7 +3142,7 @@ class MainActivity : AppCompatActivity() {
         anchorNodes.add(anchorNode)
         if (kind == "support" && originAnchorNode == null) {
             originAnchorNode = anchorNode
-            layerGlbManager?.setLayersRoot(originAnchorNode)
+            layerController.setLayersRoot(originAnchorNode)
             voxelVisualizer.setRootParent(originAnchorNode)
         }
 
@@ -3220,6 +3172,7 @@ class MainActivity : AppCompatActivity() {
         updatePointsCount()
         btnAnalyze.isEnabled = userMarkers.count { it.kind == "support" } >= 1
         vibrate(35)
+        if (::smartReticle.isInitialized) smartReticle.flashPlacement()
 
         // Синхронизируем anchors фоном
         scope.launch {
@@ -3246,11 +3199,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun resetOriginAndAnchors() {
         clearARAnchors()
-        loadedExportRevId = null
+        layerController.reset()
         pendingExportRevId = null
-        exportedLayers = emptyList()
-        exportedLayerPaths.clear()
-        layerGlbManager?.clearAll()
         currentVoxelData = null
         voxelVisualizer.hideVoxels()
         showHint("✓ Origin сброшен. Поставь новую опору")
@@ -3694,7 +3644,7 @@ class MainActivity : AppCompatActivity() {
         anchorMarkerNodes.clear()
         userMarkers.clear()
         originAnchorNode = null
-        layerGlbManager?.setLayersRoot(null)
+        layerController.setLayersRoot(null)
         // Can happen if activity is destroyed before voxelVisualizer init completes
         // (or if AR crashed during early startup). Never crash in onDestroy().
         if (::voxelVisualizer.isInitialized) {

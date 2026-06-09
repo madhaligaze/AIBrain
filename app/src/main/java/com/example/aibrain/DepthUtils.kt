@@ -99,4 +99,75 @@ object DepthUtils {
     }
 
     fun depthBytesToBase64(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.NO_WRAP)
+
+    /**
+     * Build the depth fields of a stream payload from a [DepthFrame].
+     *
+     * If the raw depth exceeds [maxBytes] it is uniformly downsampled in BOTH
+     * dimensions (nearest-neighbour) so the depth map keeps its aspect ratio —
+     * the server reconstructs geometry by scaling the camera intrinsics to the
+     * depth resolution, so a non-uniform shrink (e.g. halving only the height,
+     * as the old inline code did) mis-projects every sample.
+     */
+    fun buildDepthPayload(frame: DepthFrame, maxBytes: Int): Map<String, Any> {
+        var bytes = frame.bytes
+        var w = frame.width
+        var h = frame.height
+        val out = HashMap<String, Any>()
+
+        if (maxBytes in 1 until bytes.size) {
+            val factor = downsampleFactorFor(w, h, maxBytes)
+            if (factor > 1) {
+                val ds = downsampleUniform(bytes, w, h, factor)
+                bytes = ds.bytes
+                w = ds.width
+                h = ds.height
+                out["depth_downsampled"] = true
+                out["depth_downsample_factor"] = factor
+            }
+        }
+
+        out["depth_base64"] = depthBytesToBase64(bytes)
+        out["depth_width"] = w
+        out["depth_height"] = h
+        out["depth_scale_m_per_unit"] = frame.scaleMPerUnit
+        out["depth_scale"] = frame.scaleMPerUnit
+        out["depth_is_raw"] = frame.isRaw
+        out["depth_format"] = frame.format
+        out["depth_invalid_value"] = frame.invalidValue
+        return out
+    }
+
+    private data class Downsampled(val bytes: ByteArray, val width: Int, val height: Int)
+
+    /** Smallest factor f≥2 (capped) so that (w/f)·(h/f)·2 bytes fits in [maxBytes]. */
+    private fun downsampleFactorFor(w: Int, h: Int, maxBytes: Int): Int {
+        var f = 2
+        while (f < 16 && ((w + f - 1) / f) * ((h + f - 1) / f) * 2 > maxBytes) f++
+        return f
+    }
+
+    /** Nearest-neighbour decimation by [factor] in x and y. Depth is u16-LE (2 bytes/px). */
+    private fun downsampleUniform(src: ByteArray, w: Int, h: Int, factor: Int): Downsampled {
+        val f = factor.coerceAtLeast(1)
+        if (f == 1) return Downsampled(src, w, h)
+        val nw = (w + f - 1) / f
+        val nh = (h + f - 1) / f
+        val out = ByteArray(nw * nh * 2)
+        var dst = 0
+        var sy = 0
+        while (sy < h) {
+            val rowBase = sy * w * 2
+            var sx = 0
+            while (sx < w) {
+                val idx = rowBase + sx * 2
+                out[dst] = src[idx]
+                out[dst + 1] = src[idx + 1]
+                dst += 2
+                sx += f
+            }
+            sy += f
+        }
+        return Downsampled(out, nw, nh)
+    }
 }

@@ -30,7 +30,7 @@
     tools:context=".MainActivity">
 
     <!--═════════════════════════════════════════════════════════════════════-->
-    <!-- AR VIEWPORT -->
+    <!-- AR VIEWPORT — полный экран, всё остальное поверх -->
     <!--═════════════════════════════════════════════════════════════════════-->
     <com.google.ar.sceneform.ArSceneView
         android:id="@+id/sceneView"
@@ -38,7 +38,7 @@
         android:layout_height="match_parent" />
 
     <!--═════════════════════════════════════════════════════════════════════-->
-    <!-- GRID OVERLAY (Тонкая сетка для инженерного вида) -->
+    <!-- GRID OVERLAY -->
     <!--═════════════════════════════════════════════════════════════════════-->
     <View
         android:id="@+id/view_grid_overlay"
@@ -48,17 +48,18 @@
         android:alpha="0.15" />
 
     <!--═════════════════════════════════════════════════════════════════════-->
-    <!-- TOP HUD BAR -->
+    <!-- TOP HUD BAR — фиксированная высота 56dp, чёткие 3 колонки -->
     <!--═════════════════════════════════════════════════════════════════════-->
     <LinearLayout
+        android:id="@+id/top_hud_bar"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="56dp"
         android:layout_gravity="top"
         android:background="@drawable/bg_top_bar"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:elevation="8dp">
 
         <!-- LEFT: System Status -->
@@ -74,13 +75,12 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Status Indicator Dot -->
                 <View
                     android:id="@+id/status_indicator"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
                     android:background="@drawable/ic_status_dot_cyan"
-                    android:layout_marginEnd="10dp"/>
+                    android:layout_marginEnd="8dp"/>
 
                 <TextView
                     android:id="@+id/tv_system_status"
@@ -88,8 +88,8 @@
                     android:layout_height="wrap_content"
                     android:text="SYSTEM ONLINE"
                     android:textColor="#FF00F5FF"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.15"
+                    android:textSize="10sp"
+                    android:letterSpacing="0.12"
                     android:fontFamily="monospace"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -99,17 +99,18 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="FRM:0000"
-                android:textColor="#8800F5FF"
-                android:textSize="9sp"
-                android:letterSpacing="0.1"
+                android:textColor="#6600F5FF"
+                android:textSize="8sp"
+                android:letterSpacing="0.08"
                 android:fontFamily="monospace"
-                android:layout_marginTop="2dp" />
+                android:layout_marginTop="1dp" />
         </LinearLayout>
 
         <!-- CENTER: Title -->
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="2"
             android:orientation="vertical"
             android:gravity="center">
 
@@ -118,18 +119,19 @@
                 android:layout_height="wrap_content"
                 android:text="▸ СТРУКТУРНЫЙ АНАЛИЗ ◂"
                 android:textColor="#FFFFFFFF"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.25"
-                android:fontFamily="monospace" />
+                android:letterSpacing="0.2"
+                android:fontFamily="monospace"
+                android:singleLine="true" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="AI-POWERED ANALYSIS ENGINE"
-                android:textColor="#6600F5FF"
-                android:textSize="8sp"
-                android:letterSpacing="0.15"
+                android:textColor="#5500F5FF"
+                android:textSize="7sp"
+                android:letterSpacing="0.12"
                 android:fontFamily="monospace"
                 android:layout_marginTop="1dp" />
         </LinearLayout>
@@ -145,10 +147,10 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="SESSION·001"
-                android:textColor="#8800F5FF"
-                android:textSize="10sp"
-                android:letterSpacing="0.12"
+                android:text="SESS 001"
+                android:textColor="#6600F5FF"
+                android:textSize="9sp"
+                android:letterSpacing="0.1"
                 android:fontFamily="monospace" />
 
             <TextView
@@ -156,150 +158,163 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="MODE: STANDBY"
-                android:textColor="#5500F5FF"
-                android:textSize="9sp"
-                android:letterSpacing="0.1"
+                android:textColor="#4400F5FF"
+                android:textSize="8sp"
+                android:letterSpacing="0.08"
                 android:fontFamily="monospace"
-                android:layout_marginTop="2dp" />
+                android:layout_marginTop="1dp" />
         </LinearLayout>
     </LinearLayout>
 
     <!-- Top Bar Separator Line -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="2dp"
+        android:layout_height="1dp"
         android:layout_gravity="top"
-        android:layout_marginTop="60dp"
+        android:layout_marginTop="56dp"
         android:background="@drawable/gradient_line_cyan" />
 
-    <!-- Quality Bar -->
+    <!--═════════════════════════════════════════════════════════════════════-->
+    <!-- HUD METRICS GROUP: Quality + Readiness — компактный блок под баром -->
+    <!-- Во время сканирования уезжает вверх и тускнеет                      -->
+    <!--═════════════════════════════════════════════════════════════════════-->
     <LinearLayout
-        android:id="@+id/quality_bar"
+        android:id="@+id/ll_hud_metrics"
         android:layout_width="match_parent"
-        android:layout_height="32dp"
+        android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:layout_marginTop="64dp"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:gravity="center_vertical">
+        android:layout_marginTop="57dp"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="2dp"
+        android:background="#AA050A0F">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="QUALITY"
-            android:textColor="#7A00F5FF"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:layout_marginEnd="10dp" />
+        <!-- Quality Row -->
+        <LinearLayout
+            android:id="@+id/quality_bar"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <ProgressBar
-            android:id="@+id/pb_quality"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="0dp"
-            android:layout_height="8dp"
-            android:layout_weight="1"
-            android:max="100"
-            android:progress="0"
-            android:indeterminate="false" />
+            <TextView
+                android:layout_width="64dp"
+                android:layout_height="wrap_content"
+                android:text="QUALITY"
+                android:textColor="#6600F5FF"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
 
-        <TextView
-            android:id="@+id/tv_quality"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0%"
-            android:textColor="#FF00F5FF"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:layout_marginStart="10dp" />
+            <ProgressBar
+                android:id="@+id/pb_quality"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="6dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:indeterminate="false" />
+
+            <TextView
+                android:id="@+id/tv_quality"
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:text="0%"
+                android:textColor="#FF00F5FF"
+                android:textSize="9sp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+
+        <!-- Readiness Row -->
+        <LinearLayout
+            android:id="@+id/readiness_bar"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="64dp"
+                android:layout_height="wrap_content"
+                android:text="READINESS"
+                android:textColor="#6600F5FF"
+                android:textSize="9sp"
+                android:fontFamily="monospace" />
+
+            <ProgressBar
+                android:id="@+id/pb_readiness"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="6dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:indeterminate="false" />
+
+            <TextView
+                android:id="@+id/tv_readiness"
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:text="0%"
+                android:textColor="#FF00F5FF"
+                android:textSize="9sp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Detail + Coach row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="18dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_readiness_detail"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="OBS 0%/0% | VDIV 0/0 | VP 0/0"
+                android:textColor="#5500F5FF"
+                android:textSize="7sp"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tv_scan_coach"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text=""
+                android:textColor="#DDFF9900"
+                android:textSize="8sp"
+                android:fontFamily="monospace"
+                android:gravity="end"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
 
-
-    <!-- Readiness Bar -->
-    <LinearLayout
-        android:id="@+id/readiness_bar"
-        android:layout_width="match_parent"
-        android:layout_height="36dp"
-        android:layout_gravity="top"
-        android:layout_marginTop="96dp"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="READINESS"
-            android:textColor="#7A00F5FF"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:layout_marginEnd="10dp" />
-
-        <ProgressBar
-            android:id="@+id/pb_readiness"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="0dp"
-            android:layout_height="8dp"
-            android:layout_weight="1"
-            android:max="100"
-            android:progress="0"
-            android:indeterminate="false" />
-
-        <TextView
-            android:id="@+id/tv_readiness"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0%"
-            android:textColor="#FF00F5FF"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:layout_marginStart="10dp" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/tv_readiness_detail"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="128dp"
-        android:layout_marginEnd="20dp"
-        android:text="OBS 0%/0% | VDIV 0/0 | VP 0/0"
-        android:textColor="#7700F5FF"
-        android:textSize="9sp"
-        android:fontFamily="monospace"
-        android:maxLines="3"
-        android:ellipsize="none"
-        android:lineSpacingExtra="2dp" />
-
-    <!-- Coaching strip: отдельный widget для "что делать руками" (крупнее, заметнее) -->
-    <TextView
-        android:id="@+id/tv_scan_coach"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="168dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginStart="72dp"
-        android:text=""
-        android:textColor="#DDFF9900"
-        android:textSize="11sp"
-        android:fontFamily="monospace"
-        android:maxLines="2"
-        android:ellipsize="end"
-        android:visibility="gone" />
-
-    <!-- Mode Indicator -->
+    <!-- MODE INDICATOR -->
     <LinearLayout
         android:id="@+id/mode_indicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="140dp"
+        android:layout_marginTop="130dp"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:background="@drawable/mode_edit_bg">
+        android:gravity="center_vertical"
+        android:background="@drawable/mode_edit_bg"
+        android:visibility="gone">
 
         <TextView
             android:id="@+id/mode_icon"
@@ -307,7 +322,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:text="✏️"
-            android:textSize="20sp" />
+            android:textSize="18sp" />
 
         <TextView
             android:id="@+id/mode_text"
@@ -315,7 +330,7 @@
             android:layout_height="wrap_content"
             android:text="Режим редактирования"
             android:textColor="@android:color/white"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -326,25 +341,32 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="232dp"
-        android:orientation="horizontal">
+        android:layout_marginBottom="224dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
 
         <Button
             android:id="@+id/btn_undo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="6dp"
             android:enabled="false"
             android:text="↶"
-            android:textSize="20sp" />
+            android:textSize="18sp"
+            android:background="@drawable/btn_icon_cyan"
+            android:stateListAnimator="@null"
+            android:elevation="0dp" />
 
         <Button
             android:id="@+id/btn_redo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:enabled="false"
             android:text="↷"
-            android:textSize="20sp" />
+            android:textSize="18sp"
+            android:background="@drawable/btn_icon_cyan"
+            android:stateListAnimator="@null"
+            android:elevation="0dp" />
     </LinearLayout>
 
     <!--═════════════════════════════════════════════════════════════════════-->
@@ -377,7 +399,7 @@
         android:layout_height="48dp"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="220dp"
+        android:layout_marginBottom="236dp"
         android:src="@drawable/ic_corner_bl_cyan"
         android:scaleType="fitXY" />
 
@@ -387,94 +409,35 @@
         android:layout_height="48dp"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="220dp"
+        android:layout_marginBottom="236dp"
         android:src="@drawable/ic_corner_br_cyan"
         android:scaleType="fitXY" />
 
     <!--═════════════════════════════════════════════════════════════════════-->
-    <!-- CENTER TARGETING RETICLE -->
+    <!-- SMART RETICLE — живой AR-прицел с обратной связью                  -->
+    <!-- GREEN=плоскость найдена / YELLOW=feature point / DIM=поиск         -->
+    <!-- Форма овала отражает наклон поверхности (пол=плоский, стена=круг)  -->
+    <!-- Tap по прицелу = поставить якорь (tap-to-place)                    -->
     <!--═════════════════════════════════════════════════════════════════════-->
-    <FrameLayout
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_gravity="center">
-
-        <!-- Outer Ring -->
-        <View
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:background="@drawable/ic_reticle_outer_ring" />
-
-        <!-- Horizontal Crosshair -->
-        <View
-            android:layout_width="32dp"
-            android:layout_height="2dp"
-            android:layout_gravity="center"
-            android:background="#CC00F5FF" />
-
-        <!-- Vertical Crosshair -->
-        <View
-            android:layout_width="2dp"
-            android:layout_height="32dp"
-            android:layout_gravity="center"
-            android:background="#CC00F5FF" />
-
-        <!-- Center Dot -->
-        <View
-            android:layout_width="6dp"
-            android:layout_height="6dp"
-            android:layout_gravity="center"
-            android:background="@drawable/ic_dot_cyan" />
-
-        <!-- Corner Indicators -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|start"
-            android:text="┌"
-            android:textColor="#AA00F5FF"
-            android:textSize="24sp"
-            android:fontFamily="monospace" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
-            android:text="┐"
-            android:textColor="#AA00F5FF"
-            android:textSize="24sp"
-            android:fontFamily="monospace" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|start"
-            android:text="└"
-            android:textColor="#AA00F5FF"
-            android:textSize="24sp"
-            android:fontFamily="monospace" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:text="┘"
-            android:textColor="#AA00F5FF"
-            android:textSize="24sp"
-            android:fontFamily="monospace" />
-    </FrameLayout>
+    <com.example.aibrain.SmartReticleView
+        android:id="@+id/smart_reticle"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:layout_gravity="center"
+        android:contentDescription="Нажмите для размещения якоря" />
 
     <!--═════════════════════════════════════════════════════════════════════-->
     <!-- LEFT SIDEBAR DATA -->
     <!--═════════════════════════════════════════════════════════════════════-->
     <LinearLayout
+        android:id="@+id/ll_coords_panel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical|start"
-        android:layout_marginStart="14dp"
+        android:layout_marginStart="12dp"
         android:orientation="vertical"
         android:background="@drawable/bg_data_panel"
-        android:padding="12dp"
+        android:padding="10dp"
         android:alpha="0.85">
 
         <TextView
@@ -547,13 +510,14 @@
     <!-- RIGHT SIDEBAR STATUS -->
     <!--═════════════════════════════════════════════════════════════════════-->
     <LinearLayout
+        android:id="@+id/ll_status_panel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical|end"
-        android:layout_marginEnd="14dp"
+        android:layout_marginEnd="12dp"
         android:orientation="vertical"
         android:background="@drawable/bg_data_panel"
-        android:padding="12dp"
+        android:padding="10dp"
         android:alpha="0.85">
 
         <TextView
@@ -643,10 +607,10 @@
         android:layout_gravity="bottom"
         android:background="@drawable/bg_control_panel"
         android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:paddingTop="18dp"
-        android:paddingBottom="24dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="20dp"
         android:elevation="12dp">
 
         <!-- Panel Header -->
@@ -886,10 +850,10 @@
         android:layout_gravity="bottom"
         android:background="@drawable/bg_variant_panel"
         android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:paddingTop="18dp"
-        android:paddingBottom="24dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="20dp"
         android:elevation="12dp"
         android:visibility="gone">
 
@@ -970,7 +934,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="232dp"
+        android:layout_marginBottom="236dp"
         android:contentDescription="Показать глаз ИИ"
         android:src="@drawable/ic_eye"
         app:backgroundTint="#FF00BCD4"

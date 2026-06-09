@@ -26,11 +26,17 @@ object NetworkClient {
             .writeTimeout(WRITE_TIMEOUT_S, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor { chain ->
-                val req = chain.request().newBuilder()
+                val builder = chain.request().newBuilder()
                     .header("Accept", "application/json")
                     .header("User-Agent", "AIBrain-Android/${BuildConfig.VERSION_NAME}")
-                    .build()
-                chain.proceed(req)
+                // Authenticate when a key is configured. Sent as a header (never a
+                // query param, which would leak into access logs). Empty by
+                // default so the dev-mode server (no keys) is unaffected.
+                val apiKey = BuildConfig.BACKEND_API_KEY
+                if (apiKey.isNotBlank()) {
+                    builder.header("X-API-Key", apiKey)
+                }
+                chain.proceed(builder.build())
             }
             .addInterceptor(logging)
             .build()

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="BtnBase" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:minHeight">52dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.05</item>
+        <item name="android:paddingHorizontal">12dp</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:elevation">0dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="BtnPrimary" parent="BtnBase">
+        <item name="backgroundTint">#FF6600</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+
+    <style name="BtnCyan" parent="BtnBase">
+        <item name="backgroundTint">#00FFCC</item>
+        <item name="android:textColor">#0A0E1A</item>
+        <item name="strokeWidth">0dp</item>
+    </style>
+
+    <style name="BtnSecondary" parent="BtnBase">
+        <item name="backgroundTint">#2200FFCC</item>
+        <item name="android:textColor">#00FFCC</item>
+        <item name="strokeColor">#00FFCC</item>
+        <item name="strokeWidth">1.5dp</item>
+    </style>
+
+    <style name="BtnGhost" parent="BtnBase">
+        <item name="backgroundTint">#22FFFFFF</item>
+        <item name="android:textColor">#99E8F4F8</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+
+    <style name="BtnChip" parent="BtnBase">
+        <item name="backgroundTint">#33FFFFFF</item>
+        <item name="android:textColor">#E8F4F8</item>
+        <item name="strokeColor">#44FFFFFF</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="cornerRadius">18dp</item>
+    </style>
+</resources>
