@@ -55,6 +55,9 @@ class ARRuler(
 
     private var currentType: MeasurementType = MeasurementType.LINEAR
     private val currentPoints = mutableListOf<MeasurementPoint>()
+    // 3D overlay nodes (point markers + segment lines), rendered in world space.
+    private val markerNodes = mutableListOf<io.github.sceneview.node.Node>()
+    private val segmentNodes = mutableListOf<io.github.sceneview.node.Node>()
     private var lastTrackingConfidence: String = "UNKNOWN"
     private var poseJitter: Float = 0f
     private var prevCamPos: Float3? = null
@@ -71,6 +74,10 @@ class ARRuler(
     companion object {
         private const val MIN_DISTANCE = 0.01f
         private const val HEIGHT_TILT_WARN_DEG = 15f
+        private const val MARKER_RADIUS = 0.012f
+        private const val LINE_RADIUS = 0.005f
+        private val MARKER_COLOR = 0xFF5AA9E6.toInt()  // steel blue
+        private val LINE_COLOR = 0xFF7CBCEC.toInt()     // lighter blue
     }
 
     fun setSnapEnabled(enabled: Boolean) { snapToSurface = enabled }
@@ -122,6 +129,7 @@ class ARRuler(
         } else pose
 
         currentPoints.add(MeasurementPoint(anchor, finalPose))
+        renderOverlay()
 
         when (currentType) {
             MeasurementType.LINEAR -> if (currentPoints.size >= 2) {
@@ -152,6 +160,7 @@ class ARRuler(
         if (currentPoints.isEmpty()) return
         val last = currentPoints.removeLast()
         runCatching { last.anchor.detach() }
+        renderOverlay()
         val value = getCurrentValue()
         onMeasurementUpdate?.invoke(value, getCurrentLabel())
     }
@@ -207,6 +216,44 @@ class ARRuler(
     private fun clearCurrentMeasurement() {
         currentPoints.forEach { runCatching { it.anchor.detach() } }
         currentPoints.clear()
+        clearOverlay()
+    }
+
+    // ── 3D overlay (markers + segment lines, world space) ───────────────────
+    private fun clearOverlay() {
+        (markerNodes + segmentNodes).forEach { n ->
+            runCatching { n.parent?.removeChildNode(n) ?: sceneView.removeChildNode(n) }
+        }
+        markerNodes.clear()
+        segmentNodes.clear()
+    }
+
+    private fun renderOverlay() {
+        clearOverlay()
+        val engine = sceneView.engine
+        val markerMat = com.example.aibrain.ar.SceneGeometry.material(sceneView.materialLoader, MARKER_COLOR)
+        val lineMat = com.example.aibrain.ar.SceneGeometry.material(sceneView.materialLoader, LINE_COLOR)
+
+        val pts = currentPoints.map { it.getPosition() }
+        // Point markers
+        pts.forEach { p ->
+            val node = com.example.aibrain.ar.SceneGeometry.sphere(engine, markerMat, MARKER_RADIUS)
+            node.worldPosition = p
+            sceneView.addChildNode(node)
+            markerNodes.add(node)
+        }
+        // Segment lines between consecutive points
+        for (i in 0 until pts.size - 1) {
+            com.example.aibrain.ar.SceneGeometry.cylinderBetween(engine, lineMat, pts[i], pts[i + 1], LINE_RADIUS)?.let {
+                sceneView.addChildNode(it); segmentNodes.add(it)
+            }
+        }
+        // Closing edge for an area in progress
+        if (currentType == MeasurementType.AREA && pts.size >= 3) {
+            com.example.aibrain.ar.SceneGeometry.cylinderBetween(engine, lineMat, pts.last(), pts.first(), LINE_RADIUS)?.let {
+                sceneView.addChildNode(it); segmentNodes.add(it)
+            }
+        }
     }
 
     private fun snapPoseToPlane(pose: Pose, plane: Plane): Pose {

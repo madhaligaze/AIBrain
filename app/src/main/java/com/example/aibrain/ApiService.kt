@@ -7,85 +7,85 @@ import retrofit2.http.*
 
 interface ApiService {
 
-    @POST("/session/start")
+    @POST("/v1/session/start")
     suspend fun startSession(): Response<SessionResponse>
 
-    @POST("/session/stream/{session_id}")
+    @POST("/v1/session/stream/{session_id}")
     suspend fun streamData(
         @Path("session_id") sessionId: String,
         @Body body: Map<String, @JvmSuppressWildcards Any>
     ): Response<StreamResponse>
 
-    @POST("/session/model/{session_id}")
+    @POST("/v1/session/model/{session_id}")
     suspend fun startModeling(
         @Path("session_id") sessionId: String
     ): Response<ModelingResponse>
 
-    @POST("/session/model/{session_id}")
+    @POST("/v1/session/model/{session_id}")
     suspend fun startModelingWithMeasurements(
         @Path("session_id") sessionId: String,
         @Body payload: ModelingWithMeasurementsPayload
     ): Response<ModelingResponse>
 
-    @POST("/session/update/{session_id}")
+    @POST("/v1/session/update/{session_id}")
     suspend fun updateStructure(
         @Path("session_id") sessionId: String,
         @Body action: UpdateAction
     ): Response<UpdateResponse>
 
-    @POST("/session/preview_remove/{session_id}")
+    @POST("/v1/session/preview_remove/{session_id}")
     suspend fun previewRemove(
         @Path("session_id") sessionId: String,
         @Query("element_id") elementId: String
     ): Response<PreviewResponse>
 
-    @GET("/health")
+    @GET("/v1/health")
     suspend fun healthCheck(): Response<HealthResponse>
 
-    @GET("/session/voxels/{session_id}")
+    @GET("/v1/session/voxels/{session_id}")
     suspend fun getVoxels(
         @Path("session_id") sessionId: String
     ): Response<VoxelResponse>
 
-    @POST("/session/anchors")
+    @POST("/v1/session/anchors")
     suspend fun postAnchors(
         @Body payload: AnchorPayload
     ): Response<AnchorsResponse>
 
-    @POST("/session/lock")
+    @POST("/v1/session/lock")
     suspend fun lockSession(
         @Body payload: LockPayload
     ): Response<LockResponse>
 
-    @GET("/session/{session_id}/readiness")
+    @GET("/v1/session/{session_id}/readiness")
     suspend fun getReadiness(
         @Path("session_id") sessionId: String
     ): Response<ReadinessResponse>
 
-    @GET("/session/{session_id}/export/latest")
+    @GET("/v1/session/{session_id}/export/latest")
     suspend fun exportLatest(
         @Path("session_id") sessionId: String
     ): Response<SceneBundleResponse>
 
     // Compatibility endpoint (used for readiness/scan hints and e2e smoke stability)
-    @POST("/session/{session_id}/request_scaffold")
+    @POST("/v1/session/{session_id}/request_scaffold")
     suspend fun requestScaffoldCompat(
         @Path("session_id") sessionId: String
     ): Response<JsonObject>
 
-    @POST("/session/log/{session_id}")
+    @POST("/v1/session/log/{session_id}")
     suspend fun logEvent(
         @Path("session_id") sessionId: String,
         @Body payload: LogPayload
     ): Response<Unit>
 
-    @POST("/session/report/{session_id}")
+    @POST("/v1/session/report/{session_id}")
     suspend fun postSessionCrashReport(
         @Path("session_id") sessionId: String,
         @Body payload: CrashEnvelope
     ): Response<Unit>
 
-    @POST("/telemetry/client_report")
+    @POST("/v1/telemetry/client_report")
     suspend fun postClientReport(
         @Body payload: ClientReportEnvelope
     ): Response<SimpleStatusResponse>
