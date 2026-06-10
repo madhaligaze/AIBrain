@@ -6,10 +6,11 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
     app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
     app:cardUseCompatPadding="true"
     app:strokeWidth="1dp"
-    app:strokeColor="@color/cyan_alpha_20"
-    app:cardBackgroundColor="@color/transparent_panel">
+    app:strokeColor="@color/white_alpha_10"
+    app:cardBackgroundColor="@color/space_light">
 
     <LinearLayout
         android:layout_width="match_parent"
