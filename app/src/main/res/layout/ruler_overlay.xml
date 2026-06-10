@@ -71,9 +71,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Точность: высокая"
-                android:textColor="#AA00FF88"
+                android:textColor="#AA52B788"
                 android:textSize="12sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="sans-serif-medium" />
         </LinearLayout>
     </LinearLayout>
 
@@ -121,9 +121,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="ТОЧЕК: "
-            android:textColor="#6600F5FF"
+            android:textColor="#665AA9E6"
             android:textSize="10sp"
-            android:fontFamily="monospace"
+            android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.15" />
 
         <TextView
@@ -131,9 +131,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0"
-            android:textColor="#FF00F5FF"
+            android:textColor="#FF5AA9E6"
             android:textSize="18sp"
-            android:fontFamily="monospace"
+            android:fontFamily="sans-serif-medium"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -169,19 +169,19 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="▸ ИЗМЕРЕНИЯ"
-                android:textColor="#6600F5FF"
+                android:textColor="#665AA9E6"
                 android:textSize="10sp"
                 android:letterSpacing="0.2"
-                android:fontFamily="monospace" />
+                android:fontFamily="sans-serif-medium" />
 
             <TextView
                 android:id="@+id/tv_history_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0"
-                android:textColor="#4400F5FF"
+                android:textColor="#445AA9E6"
                 android:textSize="10sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="sans-serif-medium" />
         </LinearLayout>
 
         <!-- Measurements List (RecyclerView placeholder) -->
@@ -202,7 +202,7 @@
             android:textSize="12sp"
             android:textAlignment="center"
             android:padding="20dp"
-            android:fontFamily="monospace" />
+            android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 
     <!--═══════════════════════════════════════════════════════════════════-->
@@ -238,9 +238,9 @@
                 android:layout_weight="1"
                 android:layout_marginEnd="4dp"
                 android:text="ЛИНИЯ"
-                android:textColor="#FF00F5FF"
+                android:textColor="#FF5AA9E6"
                 android:textSize="10sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_mode_active"
                 android:stateListAnimator="@null"
                 android:elevation="0dp" />
@@ -252,9 +252,9 @@
                 android:layout_weight="1"
                 android:layout_marginEnd="4dp"
                 android:text="ВЫСОТА"
-                android:textColor="#6600F5FF"
+                android:textColor="#665AA9E6"
                 android:textSize="10sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_mode_inactive"
                 android:stateListAnimator="@null"
                 android:elevation="0dp" />
@@ -265,9 +265,9 @@
                 android:layout_height="36dp"
                 android:layout_weight="1"
                 android:text="ПЛОЩАДЬ"
-                android:textColor="#6600F5FF"
+                android:textColor="#665AA9E6"
                 android:textSize="10sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_mode_inactive"
                 android:stateListAnimator="@null"
                 android:elevation="0dp" />
@@ -288,7 +288,7 @@
                 android:layout_height="56dp"
                 android:layout_marginEnd="12dp"
                 android:text="↶"
-                android:textColor="#FFFF8C42"
+                android:textColor="#FFE0A046"
                 android:textSize="24sp"
                 android:background="@drawable/btn_ruler_secondary"
                 android:stateListAnimator="@null"
@@ -302,9 +302,9 @@
                 android:layout_weight="1"
                 android:layout_marginEnd="12dp"
                 android:text="+ ТОЧКА"
-                android:textColor="#FF050A0F"
+                android:textColor="#FF0E1114"
                 android:textSize="14sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:background="@drawable/btn_ruler_primary"
                 android:stateListAnimator="@null"
@@ -316,7 +316,7 @@
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:text="✓"
-                android:textColor="#FF00FF88"
+                android:textColor="#FF52B788"
                 android:textSize="24sp"
                 android:background="@drawable/btn_ruler_success"
                 android:stateListAnimator="@null"
@@ -340,10 +340,10 @@
                 android:text="Сетка"
                 android:textColor="#AAFFFFFF"
                 android:textSize="11sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:checked="true"
-                app:thumbTint="#FF00F5FF"
-                app:trackTint="#3300F5FF" />
+                app:thumbTint="#FF5AA9E6"
+                app:trackTint="#335AA9E6" />
 
             <!-- Snap Toggle -->
             <androidx.appcompat.widget.SwitchCompat
@@ -354,10 +354,10 @@
                 android:text="Привязка"
                 android:textColor="#AAFFFFFF"
                 android:textSize="11sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:checked="true"
-                app:thumbTint="#FF00F5FF"
-                app:trackTint="#3300F5FF" />
+                app:thumbTint="#FF5AA9E6"
+                app:trackTint="#335AA9E6" />
 
             <!-- Units Toggle -->
             <Button
@@ -365,9 +365,9 @@
                 android:layout_width="60dp"
                 android:layout_height="32dp"
                 android:text="м"
-                android:textColor="#FF00F5FF"
+                android:textColor="#FF5AA9E6"
                 android:textSize="12sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_units_toggle"
                 android:stateListAnimator="@null"
                 android:elevation="0dp" />
@@ -379,9 +379,9 @@
                 android:layout_height="32dp"
                 android:layout_marginStart="12dp"
                 android:text="JSON"
-                android:textColor="#FF00F5FF"
+                android:textColor="#FF5AA9E6"
                 android:textSize="12sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_units_toggle"
                 android:stateListAnimator="@null"
                 android:elevation="0dp" />
@@ -415,9 +415,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Σ"
-                android:textColor="#FF00F5FF"
+                android:textColor="#FF5AA9E6"
                 android:textSize="16sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:layout_marginEnd="8dp" />
 
             <TextView
@@ -427,7 +427,7 @@
                 android:text="0.00"
                 android:textColor="#FFFFFFFF"
                 android:textSize="14sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="sans-serif-medium" />
         </LinearLayout>
 
         <!-- Point Count -->
@@ -441,7 +441,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="●"
-                android:textColor="#FF00F5FF"
+                android:textColor="#FF5AA9E6"
                 android:textSize="14sp"
                 android:layout_marginEnd="8dp" />
 
@@ -452,7 +452,7 @@
                 android:text="0"
                 android:textColor="#FFFFFFFF"
                 android:textSize="14sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="sans-serif-medium" />
         </LinearLayout>
 
         <!-- Area (if applicable) -->
@@ -467,7 +467,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="▭"
-                android:textColor="#FFFF8C42"
+                android:textColor="#FFE0A046"
                 android:textSize="14sp"
                 android:layout_marginEnd="8dp" />
 
@@ -478,7 +478,7 @@
                 android:text="0 m²"
                 android:textColor="#FFFFFFFF"
                 android:textSize="12sp"
-                android:fontFamily="monospace" />
+                android:fontFamily="sans-serif-medium" />
         </LinearLayout>
     </LinearLayout>
 

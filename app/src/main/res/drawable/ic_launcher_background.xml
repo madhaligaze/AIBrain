@@ -26,9 +26,9 @@
 
     <!-- === CIRCUIT TRACES (teal) === -->
     <!-- Main horizontal spine -->
-    <path android:pathData="M18,54L90,54" android:strokeWidth="1.2" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M18,54L90,54" android:strokeWidth="1.2" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
     <!-- Vertical trunk -->
-    <path android:pathData="M54,18L54,90" android:strokeWidth="1.2" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M54,18L54,90" android:strokeWidth="1.2" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
 
     <!-- Branch traces - horizontal -->
     <path android:pathData="M18,36L36,36" android:strokeWidth="0.8" android:strokeColor="#00838F" android:fillColor="#00000000"/>
@@ -50,20 +50,20 @@
 
     <!-- === SOLDER PADS / NODES === -->
     <!-- Center node (large) -->
-    <path android:pathData="M54,54m-5,0a5,5 0 1,0 10,0a5,5 0 1,0 -10,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M54,54m-5,0a5,5 0 1,0 10,0a5,5 0 1,0 -10,0" android:fillColor="#4A90C2"/>
     <path android:pathData="M54,54m-3,0a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" android:fillColor="#0D1117"/>
 
     <!-- Mid-ring nodes (medium) -->
-    <path android:pathData="M36,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M36,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#4A90C2"/>
     <path android:pathData="M36,54m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
 
-    <path android:pathData="M72,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M72,54m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#4A90C2"/>
     <path android:pathData="M72,54m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
 
-    <path android:pathData="M54,36m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M54,36m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#4A90C2"/>
     <path android:pathData="M54,36m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
 
-    <path android:pathData="M54,72m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#00BCD4"/>
+    <path android:pathData="M54,72m-3.5,0a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0" android:fillColor="#4A90C2"/>
     <path android:pathData="M54,72m-2,0a2,2 0 1,0 4,0a2,2 0 1,0 -4,0" android:fillColor="#0D1117"/>
 
     <!-- Corner intersection nodes (small) -->
@@ -102,8 +102,8 @@
     <!-- === ACCENT GLOW (soft centre radial hint via large low-opacity circle) === -->
     <path
         android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0"
-        android:fillColor="#0600BCD4"
-        android:strokeColor="#00BCD4"
+        android:fillColor="#064A90C2"
+        android:strokeColor="#4A90C2"
         android:strokeWidth="0.3"/>
 
 </vector>

@@ -25,7 +25,7 @@
     <!-- Left horn -->
     <path
         android:pathData="M35,28 L26,6 L47,9 Z"
-        android:fillColor="#00BCD4"
+        android:fillColor="#4A90C2"
         android:strokeColor="#4DD0E1"
         android:strokeWidth="0.6"/>
     <!-- Left horn inner bevel -->
@@ -36,7 +36,7 @@
     <!-- Right horn -->
     <path
         android:pathData="M73,28 L61,9 L82,6 Z"
-        android:fillColor="#00BCD4"
+        android:fillColor="#4A90C2"
         android:strokeColor="#4DD0E1"
         android:strokeWidth="0.6"/>
     <!-- Right horn inner bevel -->
@@ -54,8 +54,8 @@
     <!-- ======= HEAD: angular war-helmet hexagon ======= -->
     <path
         android:pathData="M33,27 L75,27 L84,39 L80,51 L28,51 L24,39 Z"
-        android:fillColor="#0A1520"
-        android:strokeColor="#00BCD4"
+        android:fillColor="#13171B"
+        android:strokeColor="#4A90C2"
         android:strokeWidth="1.8"/>
 
     <!-- Head armor: forehead ridge -->
@@ -137,7 +137,7 @@
     <path
         android:pathData="M50,51 L54,55 L58,51"
         android:strokeWidth="0.8"
-        android:strokeColor="#00BCD4"
+        android:strokeColor="#4A90C2"
         android:fillColor="#00000000"
         android:strokeLineJoin="round"/>
 
@@ -149,9 +149,9 @@
         android:strokeColor="#00838F"
         android:strokeWidth="1.0"/>
     <!-- Left mandible vents -->
-    <path android:pathData="M23,58 L22,64" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
-    <path android:pathData="M26,59 L25,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
-    <path android:pathData="M29,60 L28,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M23,58 L22,64" android:strokeWidth="0.6" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
+    <path android:pathData="M26,59 L25,65" android:strokeWidth="0.6" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
+    <path android:pathData="M29,60 L28,65" android:strokeWidth="0.6" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
 
     <!-- Right mandible -->
     <path
@@ -160,15 +160,15 @@
         android:strokeColor="#00838F"
         android:strokeWidth="1.0"/>
     <!-- Right mandible vents -->
-    <path android:pathData="M85,58 L86,64" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
-    <path android:pathData="M82,59 L83,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
-    <path android:pathData="M79,60 L80,65" android:strokeWidth="0.6" android:strokeColor="#00BCD4" android:fillColor="#00000000"/>
+    <path android:pathData="M85,58 L86,64" android:strokeWidth="0.6" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
+    <path android:pathData="M82,59 L83,65" android:strokeWidth="0.6" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
+    <path android:pathData="M79,60 L80,65" android:strokeWidth="0.6" android:strokeColor="#4A90C2" android:fillColor="#00000000"/>
 
     <!-- ======= NECK ======= -->
     <path
         android:pathData="M44,51 L44,57 L64,57 L64,51"
         android:fillColor="#0F2030"
-        android:strokeColor="#00BCD4"
+        android:strokeColor="#4A90C2"
         android:strokeWidth="1.1"/>
     <!-- Neck power conduit (red) -->
     <path
@@ -188,13 +188,13 @@
     <path
         android:pathData="M36,57 L32,66 L76,66 L72,57 Z"
         android:fillColor="#0D1E2D"
-        android:strokeColor="#00BCD4"
+        android:strokeColor="#4A90C2"
         android:strokeWidth="1.3"/>
     <!-- Chest center divider -->
     <path
         android:pathData="M54,57 L54,66"
         android:strokeWidth="0.8"
-        android:strokeColor="#00BCD4"
+        android:strokeColor="#4A90C2"
         android:fillColor="#00000000"/>
     <!-- Chest V danger mark -->
     <path

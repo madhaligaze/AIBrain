@@ -15,7 +15,7 @@
         android:textColor="@color/cyan_primary"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:fontFamily="monospace"
+        android:fontFamily="sans-serif-medium"
         android:gravity="center"
         android:layout_marginBottom="16dp" />
 

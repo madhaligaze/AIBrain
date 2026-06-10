@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#CC000000"
+    android:background="#B23A4500"
     android:clickable="true"
     android:focusable="true">
 
@@ -23,7 +23,7 @@
             android:textColor="@color/cyan_primary"
             android:textStyle="bold"
             android:textSize="16sp"
-            android:fontFamily="monospace"
+            android:fontFamily="sans-serif-medium"
             android:layout_marginBottom="10dp" />
 
         <TextView
@@ -33,7 +33,7 @@
             android:text="..."
             android:textColor="@color/text_white_bright"
             android:textSize="13sp"
-            android:fontFamily="monospace"
+            android:fontFamily="sans-serif-medium"
             android:lineSpacingExtra="3dp"
             android:layout_marginBottom="16dp" />
         <CheckBox
@@ -43,7 +43,7 @@
             android:text="Не показывать снова"
             android:textColor="@color/text_white_bright"
             android:textSize="12sp"
-            android:fontFamily="monospace"
+            android:fontFamily="sans-serif-medium"
             android:layout_marginBottom="12dp"
             android:buttonTint="@color/cyan_primary" />
 
@@ -59,7 +59,7 @@
                 android:layout_weight="1"
                 android:text="SKIP"
                 android:textSize="11sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:backgroundTint="@color/cyan_alpha_20"
                 android:textColor="@color/cyan_primary" />
 
@@ -71,7 +71,7 @@
                 android:layout_marginStart="10dp"
                 android:text="NEXT"
                 android:textSize="11sp"
-                android:fontFamily="monospace"
+                android:fontFamily="sans-serif-medium"
                 android:backgroundTint="@color/orange_alpha_20"
                 android:textColor="@color/orange_primary" />
         </LinearLayout>
