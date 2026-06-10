@@ -32,7 +32,7 @@
     <!--═════════════════════════════════════════════════════════════════════-->
     <!-- AR VIEWPORT — полный экран, всё остальное поверх -->
     <!--═════════════════════════════════════════════════════════════════════-->
-    <com.google.ar.sceneform.ArSceneView
+    <io.github.sceneview.ar.ARSceneView
         android:id="@+id/sceneView"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

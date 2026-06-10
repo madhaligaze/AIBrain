@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import com.example.aibrain.SceneBundleResponse
 import com.example.aibrain.UiLayer
 import com.example.aibrain.scene.LayerGlbManager
-import com.google.ar.sceneform.AnchorNode
-import com.google.ar.sceneform.ArSceneView
+import io.github.sceneview.ar.ARSceneView
+import io.github.sceneview.ar.node.AnchorNode
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -18,7 +18,7 @@ import kotlinx.coroutines.CoroutineScope
  */
 class LayerController(
     private val context: Context,
-    private val sceneView: ArSceneView,
+    private val sceneView: ARSceneView,
     private val scope: CoroutineScope,
     private val settingsPrefs: SharedPreferences,
     private val serverUrl: () -> String,

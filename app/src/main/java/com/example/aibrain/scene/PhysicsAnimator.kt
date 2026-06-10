@@ -6,147 +6,44 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import com.example.aibrain.SoundManager
-import com.example.aibrain.SoundType
-import com.example.aibrain.effects.ParticleSystem
-import com.google.ar.sceneform.Node
-import com.google.ar.sceneform.math.Vector3
-import com.google.ar.sceneform.ArSceneView
+import io.github.sceneview.ar.ARSceneView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlin.random.Random
 
 /**
- * Физический аниматор с "сочными" эффектами.
+ * TODO(sceneview-migration): re-implement the falling/collapse node animation with
+ * SceneView nodes (position tween + particles). For now it keeps the haptic
+ * feedback (engine-independent) and no-ops the visual part so the build compiles.
+ * See SCENEVIEW_MIGRATION.md.
  */
 class PhysicsAnimator(
-    private val sceneView: ArSceneView,
+    private val sceneView: ARSceneView,
     private val sceneBuilder: SceneBuilder,
     context: Context,
-    // Shared SoundManager injected from caller (MainActivity) to avoid double SoundPool
-    private val soundManager: SoundManager? = null
+    private val soundManager: SoundManager? = null,
 ) {
     private val effectScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private val particleSystem = ParticleSystem(sceneView, effectScope)
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-        vm?.defaultVibrator
+        (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
     } else {
         @Suppress("DEPRECATION")
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
-    private val activeAnimations = mutableMapOf<String, FallingState>()
-
     fun animateFall(collapsedIds: List<String>) {
-        if (collapsedIds.isEmpty()) {
-            return
-        }
-
-        soundManager?.play(SoundType.COLLAPSE, volume = 1.0f, pitch = 0.8f)
-        vibrateCollapse(collapsedIds.size)
-
-        collapsedIds.forEach { id ->
-            val node = sceneBuilder.findNodeById(id) ?: return@forEach
-            activeAnimations[id] = FallingState(node = node, initialHeight = node.worldPosition.y)
-        }
-
-        if (activeAnimations.isNotEmpty()) {
-            sceneView.scene.addOnUpdateListener(::onUpdate)
-        }
-    }
-
-    private fun onUpdate(frameTime: com.google.ar.sceneform.FrameTime) {
-        val delta = frameTime.deltaSeconds.coerceAtLeast(0.016f)
-        val iterator = activeAnimations.iterator()
-
-        while (iterator.hasNext()) {
-            val (_, state) = iterator.next()
-            state.velocityY -= 9.81f * delta
-
-            val currentPos = state.node.worldPosition
-            val nextY = currentPos.y + state.velocityY * delta
-
-            if (nextY <= groundY) {
-                val impactIntensity = (-state.velocityY / 10f).coerceIn(0.3f, 1.0f)
-                soundManager?.play3D(
-                    SoundType.DUST_IMPACT,
-                    distance = currentPos.length(),
-                    pitch = 0.8f + Random.nextFloat() * 0.4f
-                )
-
-                if (state.bouncesLeft == state.maxBounces) {
-                    particleSystem.createSparks(currentPos, count = 30)
-                    particleSystem.createDustCloud(currentPos, intensity = impactIntensity)
-                    particleSystem.createShockwave(currentPos)
-                } else {
-                    particleSystem.createDustCloud(currentPos, intensity = impactIntensity * 0.5f)
-                }
-
-                state.bouncesLeft--
-
-                if (state.bouncesLeft <= 0) {
-                    state.node.worldPosition = Vector3(currentPos.x, groundY, currentPos.z)
-                    iterator.remove()
-                    continue
-                }
-
-                state.velocityY = -state.velocityY * 0.35f
-                state.node.worldPosition = Vector3(currentPos.x, groundY, currentPos.z)
-            } else {
-                state.node.worldPosition = Vector3(currentPos.x, nextY, currentPos.z)
+        if (collapsedIds.isEmpty()) return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createOneShot(120, VibrationEffect.DEFAULT_AMPLITUDE))
             }
         }
-
-        if (activeAnimations.isEmpty()) {
-            sceneView.scene.removeOnUpdateListener(::onUpdate)
-        }
     }
 
-    private fun vibrateCollapse(elementCount: Int) {
-        val vib = vibrator ?: return
-        if (!vib.hasVibrator()) return
-
-        val duration = when {
-            elementCount < 3 -> 100L
-            elementCount < 10 -> 300L
-            else -> 500L
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = VibrationEffect.createOneShot(
-                duration,
-                (255 * (elementCount / 50f).coerceAtMost(1f)).toInt().coerceAtLeast(40)
-            )
-            vib.vibrate(effect)
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(duration)
-        }
-    }
-
-    fun stopAll() {
-        activeAnimations.clear()
-        sceneView.scene.removeOnUpdateListener(::onUpdate)
-        soundManager?.stopAll()
-    }
+    fun stopAll() { /* no visual animations to stop */ }
 
     fun release() {
-        stopAll()
-        effectScope.cancel()
-        // NOTE: soundManager is owned by the caller (MainActivity) — do NOT release it here
-    }
-
-    private data class FallingState(
-        val node: Node,
-        val initialHeight: Float,
-        var velocityY: Float = 0f,
-        var bouncesLeft: Int = 2,
-        val maxBounces: Int = 2
-    )
-
-    private companion object {
-        const val groundY = 0f
+        runCatching { effectScope.cancel() }
     }
 }

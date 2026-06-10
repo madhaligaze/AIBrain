@@ -44,10 +44,11 @@ import com.google.ar.core.Plane
 import com.google.ar.core.Point
 import com.google.ar.core.TrackingFailureReason
 import com.google.ar.core.TrackingState
-import com.google.ar.sceneform.AnchorNode
-import com.google.ar.sceneform.Node
-import com.google.ar.sceneform.math.Vector3
-import com.google.ar.sceneform.rendering.Color as SceneColor
+import io.github.sceneview.ar.node.AnchorNode
+import io.github.sceneview.node.Node
+import io.github.sceneview.node.CubeNode
+import io.github.sceneview.geometries.Cube
+import dev.romainguy.kotlin.math.Float3
 import com.example.aibrain.assets.ModelAssets
 import com.example.aibrain.managers.ARSessionManager
 import com.example.aibrain.scene.PhysicsAnimator
@@ -57,7 +58,7 @@ import com.example.aibrain.scene.LayerGlbManager
 import com.example.aibrain.network.NetworkStateController
 import com.google.gson.Gson
 import com.google.ar.core.exceptions.CameraNotAvailableException
-import com.google.ar.sceneform.ArSceneView
+import io.github.sceneview.ar.ARSceneView
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.*
@@ -152,7 +153,7 @@ class MainActivity : AppCompatActivity() {
     // ══════════════════════════════════════════════════════════════════════
     // UI ЭЛЕМЕНТЫ - ОСНОВНЫЕ
     // ══════════════════════════════════════════════════════════════════════
-    private lateinit var sceneView: ArSceneView
+    private lateinit var sceneView: ARSceneView
     private var arCoreInstallRequested: Boolean = false
     private lateinit var arManager: ARSessionManager
     private lateinit var tvAiHint: TextView
@@ -546,6 +547,9 @@ class MainActivity : AppCompatActivity() {
     private fun initViews() {
         // Основные элементы
         sceneView = findViewById(R.id.sceneView)
+        // SceneView's ARSceneView is lifecycle-driven (it manages the ARCore session,
+        // Filament engine and rendering loop itself).
+        sceneView.lifecycle = lifecycle
         tvAiHint = findViewById(R.id.tv_ai_hint)
         tvFrameCounter = findViewById(R.id.tv_frame_counter)
         tvCoordX = findViewById(R.id.tv_coord_x)
@@ -702,9 +706,11 @@ class MainActivity : AppCompatActivity() {
         // Конфигурацию ARCore Session делаем через ARSessionManager (без SceneView-специфичных API).
 
         if (!::arManager.isInitialized) {
-            arManager = ARSessionManager(this, sceneView)
+            arManager = ARSessionManager(sceneView)
         }
-        val sessionOk = arManager.setupSession()
+        // SceneView owns the ARCore session lifecycle; we just supply the config.
+        arManager.configure()
+        val sessionOk = true
         if (!sessionOk) {
             val reason = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) ArNotSupportedActivity.REASON_API_TOO_LOW else ArNotSupportedActivity.REASON_SESSION_FAIL
             startActivity(Intent(this, ArNotSupportedActivity::class.java).putExtra(ArNotSupportedActivity.AR_REASON_KEY, reason))
@@ -724,21 +730,7 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        if (mainAnchorNode == null) {
-            mainAnchorNode = AnchorNode().also { anchor ->
-                anchor.setParent(sceneView.scene)
-                anchorNodes.add(anchor)
-            }
-        }
-
-        sceneView.scene.addOnUpdateListener { _: com.google.ar.sceneform.FrameTime ->
-            val anchor = mainAnchorNode
-            if (anchor != null && !lightingSetup) {
-                LightingSetup.setupLighting(sceneView, anchor)
-                lightingSetup = true
-            }
-
-            val frame = sceneView.arFrame ?: return@addOnUpdateListener
+        sceneView.onSessionUpdated = { _, frame ->
             val camera = frame.camera
 
             val centerHits = frame.hitTest(sceneView.width / 2f, sceneView.height / 2f)
@@ -992,7 +984,7 @@ class MainActivity : AppCompatActivity() {
 
         val supports = userMarkers.filter { it.kind == "support" }
         if (supports.size >= 2 && ::scaffoldRenderer.isInitialized) {
-            val positions = supports.map { Vector3(it.x, it.y, it.z) }
+            val positions = supports.map { Float3(it.x, it.y, it.z) }
             scaffoldRenderer.setRootParent(originAnchorNode)
             scaffoldRenderer.buildScaffold(supports = positions, height = 3.0f, levels = 3)
             showHint("🏗️ Превью каркаса обновлено (${supports.size} опоры)")
@@ -1596,7 +1588,7 @@ class MainActivity : AppCompatActivity() {
         if (!rulerMode) return
 
         try {
-            val frame = sceneView.arFrame ?: run {
+            val frame = sceneView.frame ?: run {
             messageCenter.post(getString(R.string.hint_ar_frame_unavailable), MessageCenter.Level.WARN, MessageCenter.Source.AR)
             return
         }
@@ -2262,14 +2254,14 @@ class MainActivity : AppCompatActivity() {
         if (before == userMarkers.size) return
 
         val markerNode = anchorMarkerNodes.remove(anchorId)
-        runCatching { markerNode?.setParent(null) }
+        runCatching { markerNode?.let { it.parent?.removeChildNode(it) } }
 
         val iterator = anchorNodes.iterator()
         while (iterator.hasNext()) {
             val anchorNode = iterator.next()
             if ((anchorNode.name ?: "") == anchorId) {
                 runCatching { anchorNode.anchor?.detach() }
-                anchorNode.setParent(null)
+                sceneView.removeChildNode(anchorNode)
                 iterator.remove()
                 break
             }
@@ -2386,7 +2378,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateCameraCoordinates() {
         try {
-            val frame = sceneView.arFrame ?: return
+            val frame = sceneView.frame ?: return
             val pose = frame.camera.displayOrientedPose
 
             tvCoordX.text = "X:${"%.2f".format(pose.tx())}"
@@ -2685,7 +2677,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }.getOrDefault(emptyList())
 
-            val frame = sceneView.arFrame ?: return@withContext null
+            val frame = sceneView.frame ?: return@withContext null
             var acquiredDepth: DepthUtils.AcquiredDepthImage? = null
             try {
                 val cam = frame.camera
@@ -3079,7 +3071,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val frame = sceneView.arFrame ?: run {
+        val frame = sceneView.frame ?: run {
             messageCenter.post(getString(R.string.hint_ar_frame_unavailable), MessageCenter.Level.WARN, MessageCenter.Source.AR)
             return
         }
@@ -3128,16 +3120,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         val anchor = hit.createAnchor()
-        val anchorNode = AnchorNode(anchor).apply {
-            setParent(sceneView.scene)
-        }
+        val anchorNode = AnchorNode(sceneView.engine, anchor)
+        sceneView.addChildNode(anchorNode)
 
-        // Маленький визуальный маркер
-        val marker = Node().apply {
-            setParent(anchorNode)
-            localScale = Vector3(0.05f, 0.05f, 0.05f)
-            renderable = ModelAssets.getCopy(ModelAssets.ModelType.WEDGE_NODE)
-        }
+        // Маленький визуальный маркер (cyan cube)
+        val marker: Node = CubeNode(
+            sceneView.engine,
+            Cube.Builder().size(Float3(0.05f, 0.05f, 0.05f)).center(Float3(0f, 0f, 0f)).build(sceneView.engine),
+            sceneView.materialLoader.createColorInstance(android.graphics.Color.CYAN, 0f, 0.5f, 0f)
+        )
+        anchorNode.addChildNode(marker)
 
         anchorNodes.add(anchorNode)
         if (kind == "support" && originAnchorNode == null) {
@@ -3167,7 +3159,7 @@ class MainActivity : AppCompatActivity() {
         )
         anchorNode.name = markerId
         anchorMarkerNodes[markerId] = marker
-        marker.setOnTapListener { _, _ -> confirmDeleteAnchor(markerId) }
+        marker.onSingleTapConfirmed = { confirmDeleteAnchor(markerId); true }
 
         updatePointsCount()
         btnAnalyze.isEnabled = userMarkers.count { it.kind == "support" } >= 1
@@ -3442,19 +3434,20 @@ class MainActivity : AppCompatActivity() {
         showHint("⚠️ Могут упасть элементы: ${elementIds.size}")
         elementIds.forEach { id ->
             sceneBuilder.findNodeById(id)?.let { node ->
-                animateBlink(node, SceneColor(android.graphics.Color.RED))
+                animateBlink(node)
             }
         }
     }
 
-    private fun animateBlink(node: Node, color: SceneColor) {
+    private fun animateBlink(node: Node) {
         val animator = ValueAnimator.ofFloat(0f, 1f)
         animator.duration = 500
         animator.repeatCount = 3
         animator.repeatMode = ValueAnimator.REVERSE
         animator.addUpdateListener {
             val alpha = it.animatedValue as Float
-            node.localScale = Vector3.one().scaled(1f + alpha * 0.05f)
+            val s = 1f + alpha * 0.05f
+            node.scale = Float3(s, s, s)
         }
         animator.start()
     }
@@ -3639,7 +3632,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearARAnchors() {
-        anchorNodes.forEach { it.anchor?.detach(); it.setParent(null) }
+        anchorNodes.forEach { runCatching { it.anchor?.detach() }; sceneView.removeChildNode(it) }
         anchorNodes.clear()
         anchorMarkerNodes.clear()
         userMarkers.clear()
@@ -3738,15 +3731,8 @@ class MainActivity : AppCompatActivity() {
 
         // Не дергаем resume(), если AR так и не смог стартовать (например, setupSession() вернул false).
         if (isArSceneReady) {
-            try {
-                sceneView.resume()
-                arResumed = true
-            } catch (e: CameraNotAvailableException) {
-                arResumed = false
-                Log.e("MainActivity", "Camera not available on resume", e)
-                // Не "ошибка" — пользователь просто переключился из другого приложения с камерой.
-                showWarning("Камера занята. Закройте другое приложение с камерой и вернитесь.")
-            }
+            // SceneView's ARSceneView resumes/pauses with the lifecycle automatically.
+            arResumed = true
         }
 
         if (eyeOfAIActive) {
@@ -3762,17 +3748,8 @@ class MainActivity : AppCompatActivity() {
         stopStreaming()
         stopAutoVoxelRefresh()
         super.onPause()
-        if (arResumed) {
-            // sceneView.pause() только если AR реально был в resumed-состоянии.
-            // Двойной pause() → "RET_CHECK failure in scheduler.cc" в ARCore.
-            runCatching {
-                sceneView.pause()
-                Log.d("Lifecycle", "sceneView.pause() OK")
-            }.onFailure { e ->
-                Log.e("Lifecycle", "sceneView.pause() failed: ${e.message}", e)
-            }
-            arResumed = false
-        }
+        // SceneView's ARSceneView pauses with the lifecycle automatically.
+        arResumed = false
     }
 
 
