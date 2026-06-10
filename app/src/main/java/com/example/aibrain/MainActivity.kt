@@ -241,12 +241,11 @@ class MainActivity : AppCompatActivity() {
     // StateFlow.value is safe to read off the main thread (streaming loop).
     private val currentSessionId: String?
         get() = if (::viewModel.isInitialized) viewModel.sessionId.value else null
-    private var isStreaming = false
-    private var streamJob: Job? = null
+    private lateinit var streaming: com.example.aibrain.streaming.StreamingController
+    private val isStreaming: Boolean get() = ::streaming.isInitialized && streaming.isStreaming
     private var healthJob: Job? = null
     private var voxelPollJob: Job? = null
     private var lastConnectionDetail: String? = null
-    private var consecutiveFailures = 0
     private var isReconnecting = false
     private var frameCount = 0
     private var lastQualityScore = 0.0
@@ -301,16 +300,12 @@ class MainActivity : AppCompatActivity() {
     // (the stream payload's client_stats reads it).
     private val currentConnStatus: ConnectionStatus
         get() = if (::viewModel.isInitialized) viewModel.connectionState.value.status else ConnectionStatus.UNKNOWN
-    @Volatile private var streamPendingTick: Boolean = false
-    @Volatile private var streamImmediateNextTick: Boolean = false
     private val streamTuner = com.example.aibrain.streaming.StreamTuner(intervalMs = STREAM_INTERVAL_MS)
-    private var lastSendMs: Long = 0L
     // Readiness UI state now lives in StructureViewModel.readiness (StateFlow).
     private var lastReadinessHintsHash: String? = null
     private var lastReadinessHintsAtMs: Long = 0L
     private var lastCompatHintsHash: String? = null
     private var lastCompatHintsAtMs: Long = 0L
-    private var nextStreamAttemptAtMs: Long = 0L
     private val exportPoller by lazy {
         com.example.aibrain.controller.ExportPoller(
             scope = lifecycleScope,
@@ -354,14 +349,12 @@ class MainActivity : AppCompatActivity() {
     private val exportLoadMutex = Mutex()
     private val lockExportMutex = Mutex()
     @Volatile private var autoReportInFlight: Boolean = false
-    private var streamErrorStreak: Int = 0
     private var exportNotReady409: Boolean = false
     private var lastAutoReloadAtMs: Long = 0L
     private var pendingAutoReloadRev: String? = null
     private var isUiActive: Boolean = false
     private var pollingSessionId: String? = null
     private var originAnchorNode: AnchorNode? = null
-    private var streamSendJob: Job? = null
     private var isArSceneReady = false
     private var isRulerReady = false
     private var arResumed: Boolean = false
@@ -432,6 +425,24 @@ class MainActivity : AppCompatActivity() {
         offlineQueue = OfflineQueue(this)
         crashReporter = CrashReporter(this)
         netState = NetworkStateController()
+        streaming = com.example.aibrain.streaming.StreamingController(
+            scope = scope,
+            tuner = streamTuner,
+            netState = netState,
+            reconnectBaseMs = RECONNECT_BASE_MS,
+            reconnectMaxMs = RECONNECT_MAX_MS,
+            cb = object : com.example.aibrain.streaming.StreamingController.Callbacks {
+                override fun sessionId(): String? = currentSessionId
+                override suspend fun sendFrame(jpegQuality: Int, pointCap: Int): Boolean =
+                    sendFrameWith(jpegQuality, pointCap)
+                override fun serverUrl(): String = getCurrentServerUrl()
+                override fun onConnectionStatus(status: ConnectionStatus, baseUrl: String) {
+                    viewModel.setConnectionState(status, baseUrl)
+                }
+                override fun onErrorStreak() { maybeAutoReport("stream_errors_streak") }
+                override fun onTick() { updateFrameCounter(); updateCameraCoordinates() }
+            },
+        )
         if (crashReporter.readCrashMarkerSnippet() != null) {
             maybeAutoReport("crash_marker")
         }
@@ -2467,7 +2478,7 @@ class MainActivity : AppCompatActivity() {
                     pendingAutoReloadRev = null
                     lastAutoReloadAtMs = 0L
 
-                    consecutiveFailures = 0
+                    if (::streaming.isInitialized) streaming.resetFailures()
                     frameCount = 0
 
                     viewModel.setConnectionState(ConnectionStatus.ONLINE, base)
@@ -2494,87 +2505,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startStreamingLoop() {
-        if (isStreaming) return
         val sid = currentSessionId ?: return
-
-        isStreaming = true
-        netState.setStreaming(true)
-        streamJob?.cancel()
-        streamSendJob?.cancel()
-        streamJob = scope.launch {
-            while (isActive && isStreaming && currentSessionId == sid) {
-                val nowMs = System.currentTimeMillis()
-                if (nowMs < nextStreamAttemptAtMs) {
-                    delay(min(streamTuner.intervalMs, nextStreamAttemptAtMs - nowMs))
-                    continue
-                }
-                if (streamSendJob?.isActive == true) {
-                    // Backpressure: remember that we need one more tick once current send finishes.
-                    streamPendingTick = true
-                } else {
-                    streamSendJob = launch(Dispatchers.IO) {
-                        val t0 = System.nanoTime()
-                        val ok = try {
-                            withTimeout(2_500L) { sendFrameWith(streamTuner.jpegQuality, streamTuner.pointCap) }
-                        } catch (_: Exception) {
-                            false
-                        }
-                        val sendMs = ((System.nanoTime() - t0) / 1_000_000L).coerceAtLeast(0L)
-                        lastSendMs = sendMs
-
-                        withContext(Dispatchers.Main) {
-                            if (!ok) {
-                                consecutiveFailures += 1
-                                streamErrorStreak += 1
-                            } else {
-                                consecutiveFailures = 0
-                                streamErrorStreak = 0
-                            }
-
-                            // Centralized network state update (shared backoff/jitter).
-                            val baseUrl = getCurrentServerUrl().trimEnd('/')
-                            scope.launch(Dispatchers.IO) {
-                                netState.reportResult(
-                                    tag = "stream",
-                                    success = ok,
-                                    baseMs = RECONNECT_BASE_MS,
-                                    maxMs = RECONNECT_MAX_MS,
-                                    errorDetail = if (ok) null else "stream_failed"
-                                )
-                                withContext(Dispatchers.Main) {
-                                    val st = netState.getStatus()
-                                    viewModel.setConnectionState(st, baseUrl)
-                                }
-                            }
-
-                            // Auto-telemetry trigger: N stream errors in a row.
-                            if (!ok && streamErrorStreak >= 5) {
-                                maybeAutoReport("stream_errors_streak")
-                            }
-
-                            tuneStreaming(ok, lastSendMs)
-                            if (streamPendingTick) {
-                                streamPendingTick = false
-                            }
-                        }
-                    }
-                }
-
-                if (consecutiveFailures > 0) {
-                    // Shared policy schedules when we may retry heavy stream sends.
-                    val snap = netState.snapshot()
-                    nextStreamAttemptAtMs = snap.nextAllowedAtMsByTag["stream"] ?: (nowMs + RECONNECT_BASE_MS)
-                } else {
-                    nextStreamAttemptAtMs = 0L
-                }
-
-                updateFrameCounter()
-                updateCameraCoordinates()
-                val waitMs = if (streamImmediateNextTick) 0L else streamTuner.intervalMs
-                streamImmediateNextTick = false
-                delay(waitMs)
-            }
-        }
+        // The loop, single-flight backpressure, adaptive cadence and shared
+        // reconnect/backoff now live in StreamingController (constructed in onCreate).
+        streaming.start(sid)
     }
 
     private fun ensureReleasePollingRunning(sessionId: String) {
@@ -2819,7 +2753,7 @@ class MainActivity : AppCompatActivity() {
                     "jpeg_quality" to jpegQuality,
                     "point_cap" to pointCap,
                     "send_interval_ms" to streamTuner.intervalMs,
-                    "last_send_ms" to lastSendMs,
+                    "last_send_ms" to (if (::streaming.isInitialized) streaming.lastSendMs else 0L),
                     "conn" to currentConnStatus.name,
                 ) + (depthPolicy?.toMap() ?: emptyMap())
                 HeavyOps.withPermit {
@@ -2901,12 +2835,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopStreaming() {
-        isStreaming = false
-        runCatching { netState.setStreaming(false) }
-        streamJob?.cancel()
-        streamJob = null
-        streamSendJob?.cancel()
-        streamSendJob = null
+        if (::streaming.isInitialized) streaming.stop()
         stopReleasePolling()
     }
 
