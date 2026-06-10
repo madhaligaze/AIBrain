@@ -89,7 +89,7 @@
                     android:text="SYSTEM ONLINE"
                     android:textColor="#FF5AA9E6"
                     android:textSize="10sp"
-                    android:letterSpacing="0.12"
+                    android:letterSpacing="0.02"
                     android:fontFamily="sans-serif-medium"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -101,7 +101,7 @@
                 android:text="FRM:0000"
                 android:textColor="#665AA9E6"
                 android:textSize="8sp"
-                android:letterSpacing="0.08"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:layout_marginTop="1dp" />
         </LinearLayout>
@@ -117,22 +117,22 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="▸ СТРУКТУРНЫЙ АНАЛИЗ ◂"
-                android:textColor="#FFFFFFFF"
-                android:textSize="13sp"
+                android:text="Структурный анализ"
+                android:textColor="#FFF2F4F6"
+                android:textSize="15sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.2"
+                android:letterSpacing="0.01"
                 android:fontFamily="sans-serif-medium"
                 android:singleLine="true" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AI-POWERED ANALYSIS ENGINE"
-                android:textColor="#555AA9E6"
-                android:textSize="7sp"
-                android:letterSpacing="0.12"
-                android:fontFamily="sans-serif-medium"
+                android:text="Проектирование лесов"
+                android:textColor="#9AA4AE"
+                android:textSize="10sp"
+                android:letterSpacing="0.01"
+                android:fontFamily="sans-serif"
                 android:layout_marginTop="1dp" />
         </LinearLayout>
 
@@ -150,7 +150,7 @@
                 android:text="SESS 001"
                 android:textColor="#665AA9E6"
                 android:textSize="9sp"
-                android:letterSpacing="0.1"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium" />
 
             <TextView
@@ -160,7 +160,7 @@
                 android:text="MODE: STANDBY"
                 android:textColor="#445AA9E6"
                 android:textSize="8sp"
-                android:letterSpacing="0.08"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:layout_marginTop="1dp" />
         </LinearLayout>
@@ -446,7 +446,7 @@
             android:text="▸ COORDINATES"
             android:textColor="#665AA9E6"
             android:textSize="8sp"
-            android:letterSpacing="0.15"
+            android:letterSpacing="0.02"
             android:fontFamily="sans-serif-medium"
             android:layout_marginBottom="8dp" />
 
@@ -492,7 +492,7 @@
             android:text="▸ ANCHORS"
             android:textColor="#665AA9E6"
             android:textSize="8sp"
-            android:letterSpacing="0.15"
+            android:letterSpacing="0.02"
             android:fontFamily="sans-serif-medium"
             android:layout_marginBottom="6dp" />
 
@@ -526,7 +526,7 @@
             android:text="▸ STATUS"
             android:textColor="#665AA9E6"
             android:textSize="8sp"
-            android:letterSpacing="0.15"
+            android:letterSpacing="0.02"
             android:fontFamily="sans-serif-medium"
             android:layout_marginBottom="8dp" />
 
@@ -627,7 +627,7 @@
                 android:text="▸ CONTROL INTERFACE"
                 android:textColor="#665AA9E6"
                 android:textSize="9sp"
-                android:letterSpacing="0.2"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium" />
 
             <View
@@ -695,7 +695,7 @@
                 android:text="▸ СТАРТ"
                 android:textColor="#FF0E1114"
                 android:textSize="13sp"
-                android:letterSpacing="0.15"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:background="@drawable/btn_primary_cyan"
@@ -711,7 +711,7 @@
                 android:text="ОПОРА"
                 android:textColor="#FF5AA9E6"
                 android:textSize="12sp"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_secondary_cyan"
                 android:stateListAnimator="@null"
@@ -727,7 +727,7 @@
                 android:text="ТОЧКА"
                 android:textColor="#FF5AA9E6"
                 android:textSize="12sp"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_secondary_cyan"
                 android:stateListAnimator="@null"
@@ -743,7 +743,7 @@
                 android:text="СКАН"
                 android:textColor="#FF5AA9E6"
                 android:textSize="12sp"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_secondary_cyan"
                 android:stateListAnimator="@null"
@@ -759,7 +759,7 @@
                 android:text="3D MODEL"
                 android:textColor="#FFE0A046"
                 android:textSize="11sp"
-                android:letterSpacing="0.1"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:background="@drawable/btn_tertiary_orange"
                 android:stateListAnimator="@null"
@@ -774,7 +774,7 @@
                 android:text="АНАЛИЗ"
                 android:textColor="#FF0E1114"
                 android:textSize="12sp"
-                android:letterSpacing="0.12"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:background="@drawable/btn_primary_green"
@@ -864,7 +864,7 @@
             android:text="▸ ВЫБОР ВАРИАНТА КОНСТРУКЦИИ"
             android:textColor="#FFE0A046"
             android:textSize="11sp"
-            android:letterSpacing="0.2"
+            android:letterSpacing="0.02"
             android:fontFamily="sans-serif-medium"
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />

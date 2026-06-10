@@ -124,7 +124,7 @@
             android:textColor="#665AA9E6"
             android:textSize="10sp"
             android:fontFamily="sans-serif-medium"
-            android:letterSpacing="0.15" />
+            android:letterSpacing="0.02" />
 
         <TextView
             android:id="@+id/tv_point_count"
@@ -171,7 +171,7 @@
                 android:text="▸ ИЗМЕРЕНИЯ"
                 android:textColor="#665AA9E6"
                 android:textSize="10sp"
-                android:letterSpacing="0.2"
+                android:letterSpacing="0.02"
                 android:fontFamily="sans-serif-medium" />
 
             <TextView
